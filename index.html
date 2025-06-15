@@ -17,6 +17,7 @@
             --button-color: #4a4a4a;
             --button-hover-color: #5a5a5a;
         }
+        * { box-sizing: border-box; }
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -31,6 +32,7 @@
         h1, h2, h3 {
             font-weight: 300;
             margin-top: 0;
+            margin-bottom: 1rem;
         }
         .main-container {
             width: 1280px;
@@ -54,10 +56,10 @@
             padding: 10px; 
             display: flex; 
             flex-direction: column;
-            overflow: hidden; /* Prevent children from overflowing */
+            overflow: hidden;
         }
         .menu-col h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-shrink: 0; }
-        #disease-library { list-style: none; padding: 0; flex-grow: 1; overflow-y: auto; }
+        #disease-library { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
         #disease-library li {
             padding: 10px;
             border: 1px solid transparent;
@@ -68,14 +70,11 @@
         #disease-library li:hover { background-color: var(--button-hover-color); }
         #disease-library li.selected { border-color: var(--primary-color); background-color: #3e3e42; }
         
-        /* --- FIX: Make form scrollable and keep buttons at the bottom --- */
-        #editor-form-wrapper {
-            flex-grow: 1;
-            overflow-y: auto; /* Allow form to scroll */
-            padding-right: 10px; /* For scrollbar spacing */
-        }
-        #editor-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        #editor-form { display: flex; flex-direction: column; gap: 1rem; }
+        .form-section { border-left: 2px solid var(--border-color); padding-left: 15px;}
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
         label { margin-bottom: 5px; font-size: 0.9em; color: #ccc; }
         input[type="text"], input[type="number"] {
             background-color: var(--input-bg-color);
@@ -85,9 +84,9 @@
             padding: 8px;
             font-size: 1em;
             width: 100%;
-            box-sizing: border-box;
         }
-        .menu-actions { margin-top: 20px; display: flex; gap: 10px; flex-shrink: 0; }
+        .menu-actions { margin-top: auto; padding-top: 1rem; display: flex; flex-direction: column; gap: 10px; }
+        .menu-actions .button-row { display: flex; gap: 10px; }
         button {
             background-color: var(--button-color);
             color: var(--text-color);
@@ -97,11 +96,12 @@
             cursor: pointer;
             transition: background-color 0.2s;
             font-size: 1em;
+            flex-grow: 1;
         }
         button:hover { background-color: var(--button-hover-color); }
-        #start-sim-btn { background-color: var(--primary-color); color: var(--bg-color); font-weight: bold; flex-grow: 1; }
+        #start-sim-btn { background-color: var(--primary-color); color: var(--bg-color); font-weight: bold; padding: 12px; }
         #delete-profile-btn { background-color: #8b2828; }
-        #error-message { color: var(--error-color); margin-top: 15px; min-height: 20px; text-align: center; flex-shrink: 0;}
+        #error-message { color: var(--error-color); min-height: 20px; text-align: center; }
 
         /* --- Simulation View --- */
         #simulation-view {
@@ -141,32 +141,40 @@
                 </div>
                 <div class="menu-col">
                     <h3>Profile Editor</h3>
-                    <div id="editor-form-wrapper">
-                        <form id="editor-form" onsubmit="return false;">
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label for="name">Disease Name</label>
-                                <input type="text" id="name">
+                    <form id="editor-form" onsubmit="return false;">
+                        <div class="form-group full-width">
+                            <label for="name">Disease Name</label>
+                            <input type="text" id="name">
+                        </div>
+                        <div class="form-section">
+                            <h3>Disease Parameters</h3>
+                            <div class="form-grid">
+                                <div class="form-group"><label for="R0">R0</label><input type="number" step="0.1" id="R0"></div>
+                                <div class="form-group"><label for="incubation_days">Incubation (d)</label><input type="number" step="1" id="incubation_days"></div>
+                                <div class="form-group"><label for="infectious_days">Infectious (d)</label><input type="number" step="1" id="infectious_days"></div>
+                                <div class="form-group"><label for="fatality_rate">Fatality Rate</label><input type="number" step="0.001" id="fatality_rate"></div>
+                                <div class="form-group"><label for="long_term_effect_rate">Long-Term Rate</label><input type="number" step="0.001" id="long_term_effect_rate"></div>
                             </div>
-                            <div class="form-group"><label for="R0">R0</label><input type="number" step="0.1" id="R0"></div>
-                            <div class="form-group"><label for="incubation_days">Incubation (d)</label><input type="number" step="1" id="incubation_days"></div>
-                            <div class="form-group"><label for="infectious_days">Infectious (d)</label><input type="number" step="1" id="infectious_days"></div>
-                            <div class="form-group"><label for="fatality_rate">Fatality Rate</label><input type="number" step="0.001" id="fatality_rate"></div>
-                            <div class="form-group"><label for="long_term_effect_rate">Long-Term Rate</label><input type="number" step="0.001" id="long_term_effect_rate"></div>
-                            
-                            <h3 style="grid-column: 1 / -1; margin-top: 15px;">Vaccine & Campaign</h3>
-                            <div class="form-group"><label for="vaccine_efficacy">Efficacy (0-1)</label><input type="number" step="0.01" id="vaccine_efficacy"></div>
-                            <div class="form-group"><label for="vaccine_mortality_rate">Vax Mortality</label><input type="number" step="0.000001" id="vaccine_mortality_rate"></div>
-                            <div class="form-group"><label for="vaccine_long_term_effect_rate">Vax Long-Term</label><input type="number" step="0.000001" id="vaccine_long_term_effect_rate"></div>
-                            <div class="form-group"><label for="initial_vax_rate">Initial Vax (0-1)</label><input type="number" step="0.01" id="initial_vax_rate"></div>
-                            <div class="form-group"><label for="daily_vax_rate">Daily Vax Rate</label><input type="number" step="1" id="daily_vax_rate"></div>
-                        </form>
-                    </div>
+                        </div>
+                         <div class="form-section">
+                            <h3>Vaccine & Campaign</h3>
+                            <div class="form-grid">
+                                <div class="form-group"><label for="vaccine_efficacy">Efficacy (0-1)</label><input type="number" step="0.01" id="vaccine_efficacy"></div>
+                                <div class="form-group"><label for="vaccine_mortality_rate">Vax Mortality</label><input type="number" step="0.000001" id="vaccine_mortality_rate"></div>
+                                <div class="form-group"><label for="vaccine_long_term_effect_rate">Vax Long-Term</label><input type="number" step="0.000001" id="vaccine_long_term_effect_rate"></div>
+                                <div class="form-group"><label for="initial_vax_rate">Initial Vax (0-1)</label><input type="number" step="0.01" id="initial_vax_rate"></div>
+                                <div class="form-group"><label for="daily_vax_rate">Daily Vax Rate</label><input type="number" step="1" id="daily_vax_rate"></div>
+                            </div>
+                        </div>
+                    </form>
                     <div class="menu-actions">
-                        <button id="save-profile-btn">Save Profile</button>
-                        <button id="delete-profile-btn">Delete Profile</button>
+                        <div class="button-row">
+                             <button id="save-profile-btn">Save Profile</button>
+                             <button id="delete-profile-btn">Delete Profile</button>
+                        </div>
+                        <div id="error-message"></div>
+                        <button id="start-sim-btn">Start Simulation</button>
                     </div>
-                     <div id="error-message"></div>
-                    <button id="start-sim-btn" style="width: 100%; margin-top: 20px;">Start Simulation</button>
                 </div>
             </div>
         </div>
@@ -211,7 +219,7 @@
 
         // =============== INITIALIZATION ===============
         init() {
-            this.els = { // Cache all DOM elements
+            this.els = {
                 menuView: document.getElementById('menu-view'), simView: document.getElementById('simulation-view'),
                 simCanvas: document.getElementById('simulation-canvas'), diseaseLibrary: document.getElementById('disease-library'),
                 editorForm: document.getElementById('editor-form'), errorMessage: document.getElementById('error-message'),
@@ -242,12 +250,12 @@
         // =============== DATA & PROFILE MANAGEMENT ===============
         loadProfiles() {
             const BASE_PRESETS = {"Influenza":{"R0":"1.3","incubation_days":"2","infectious_days":"5","fatality_rate":"0.001","long_term_effect_rate":"0.0","vaccine_efficacy":"0.5","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.000001","initial_vax_rate":"0.4","daily_vax_rate":"2"},"COVID-19":{"R0":"2.5","incubation_days":"5","infectious_days":"7","fatality_rate":"0.01","long_term_effect_rate":"0.10","vaccine_efficacy":"0.9","vaccine_mortality_rate":"0.000002","vaccine_long_term_effect_rate":"0.00005","initial_vax_rate":"0.0","daily_vax_rate":"8"},"Ebola":{"R0":"2.0","incubation_days":"8","infectious_days":"6","fatality_rate":"0.5","long_term_effect_rate":"0.05","vaccine_efficacy":"0.97","vaccine_mortality_rate":"0.00001","vaccine_long_term_effect_rate":"0.0001","initial_vax_rate":"0.0","daily_vax_rate":"1"},"Measles":{"R0":"15","incubation_days":"10","infectious_days":"8","fatality_rate":"0.002","long_term_effect_rate":"0.001","vaccine_efficacy":"0.97","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.8","daily_vax_rate":"0"},"Chickenpox":{"R0":"11","incubation_days":"14","infectious_days":"7","fatality_rate":"0.0001","long_term_effect_rate":"0.0","vaccine_efficacy":"0.9","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.7","daily_vax_rate":"0"},"Mumps":{"R0":"5","incubation_days":"18","infectious_days":"7","fatality_rate":"0.0001","long_term_effect_rate":"0.01","vaccine_efficacy":"0.88","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.8","daily_vax_rate":"0"},"Pertussis":{"R0":"15","incubation_days":"9","infectious_days":"21","fatality_rate":"0.005","long_term_effect_rate":"0.0","vaccine_efficacy":"0.85","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.6","daily_vax_rate":"1"},"Polio":{"R0":"6","incubation_days":"10","infectious_days":"14","fatality_rate":"0.005","long_term_effect_rate":"0.01","vaccine_efficacy":"0.99","vaccine_mortality_rate":"0.0000004","vaccine_long_term_effect_rate":"0.0000004","initial_vax_rate":"0.5","daily_vax_rate":"5"},"Smallpox":{"R0":"6","incubation_days":"12","infectious_days":"9","fatality_rate":"0.3","long_term_effect_rate":"0.05","vaccine_efficacy":"0.95","vaccine_mortality_rate":"0.00001","vaccine_long_term_effect_rate":"0.0001","initial_vax_rate":"0.0","daily_vax_rate":"10"}};
-            this.allDiseases = {...BASE_PRESETS}; // Use spread to create a copy
+            this.allDiseases = {...BASE_PRESETS};
             try {
                 const custom = JSON.parse(localStorage.getItem('diseaseProfiles'));
                 if(custom) this.allDiseases = {...this.allDiseases, ...custom};
             } catch (e) { console.warn("Could not load custom profiles.", e); }
-            window.BASE_PRESETS = BASE_PRESETS; // Make it global for easy access
+            window.BASE_PRESETS = BASE_PRESETS;
         },
         saveProfile() {
             const name = this.els.inputs.name.value.trim();
@@ -268,7 +276,7 @@
         deleteProfile(){
             if(this.selectedDiseaseName && !window.BASE_PRESETS.hasOwnProperty(this.selectedDiseaseName)){
                 delete this.allDiseases[this.selectedDiseaseName];
-                this.saveProfile(); // This effectively saves the removal
+                this.saveProfile();
                 this.populateLibrary();
                 this.showError(`${this.selectedDiseaseName} deleted.`, false);
                 this.selectedDiseaseName = null;
@@ -302,7 +310,7 @@
             this.els.errorMessage.style.color = isError ? 'var(--error-color)' : 'var(--primary-color)';
         },
 
-        // =============== SIMULATION CONTROL ===============
+        // =============== SIMULATION CONTROL (FIXED) ===============
         startSimulation() {
             this.showError(''); 
             
@@ -317,19 +325,23 @@
             
             for (const key in this.els.inputs) {
                 if (key === 'name') continue;
-                const label = this.els.inputs[key].labels[0].textContent;
-                if (params[key] === '') { this.showError(`Error: '${label}' cannot be empty.`); return; }
+                
+                const inputElement = this.els.inputs[key];
+                const labelElement = document.querySelector(`label[for="${key}"]`);
+                const labelText = labelElement ? labelElement.textContent : key;
+
+                if (params[key] === '') { this.showError(`Error: '${labelText}' cannot be empty.`); return; }
                 const valueNum = parseFloat(params[key]);
-                if (isNaN(valueNum)) { this.showError(`Error: '${label}' must be a valid number.`); return; }
-                if (valueNum < 0) { this.showError(`Error: '${label}' cannot be negative.`); return; }
+                if (isNaN(valueNum)) { this.showError(`Error: '${labelText}' must be a valid number.`); return; }
+                if (valueNum < 0) { this.showError(`Error: '${labelText}' cannot be negative.`); return; }
                 processedParams[key] = valueNum;
             }
 
             if (processedParams.infectious_days <= 0) { this.showError("Error: Infectious period must be > 0."); return; }
             if (processedParams.vaccine_efficacy > 1) { this.showError("Error: Vax Efficacy must be <= 1.0."); return; }
-            if (processedParams.initial_vax_rate > 1) { this.showError("Error: Initial Vax Rate must be <= 1.0."); return; }
+            if (processed_params.initial_vax_rate > 1) { this.showError("Error: Initial Vax Rate must be <= 1.0."); return; }
             
-            this.diseaseParams = processed_params;
+            this.diseaseParams = processedParams;
             this.diseaseParams.transmission_prob = this.diseaseParams.R0 / (this.AVG_CONTACTS_PER_DAY * this.diseaseParams.infectious_days);
             this.diseaseParams.incubation_ticks = Math.round(this.diseaseParams.incubation_days * this.TICKS_PER_DAY);
             this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
@@ -338,7 +350,7 @@
             this.updateView();
             this.simulationRunning = true;
             this.resetSimulationState();
-            requestAnimationFrame((t) => this.gameLoop(t));
+            requestAnimationFrame(() => this.gameLoop());
         },
         stopSimulation() {
             this.simulationRunning = false;
@@ -366,14 +378,11 @@
         // =============== CORE SIMULATION LOOP ===============
         gameLoop() {
             if (!this.simulationRunning) return;
-            this.update();
-            this.render();
+            this.update(); this.render();
             requestAnimationFrame(() => this.gameLoop());
         },
         update() {
-            this.ticks++;
-            this.handleVaccinationCampaign();
-            this.handleInfections();
+            this.ticks++; this.handleVaccinationCampaign(); this.handleInfections();
             this.population.forEach(agent => {
                 agent.move(this.els.simCanvas.width, this.els.simCanvas.height);
                 agent.update_state(this.diseaseParams);
@@ -409,7 +418,6 @@
             if(infectious.length === 0) return;
             const targets = this.population.filter(a => a.state === 'S' || a.state === 'V');
             const vax_prob = this.diseaseParams.transmission_prob * (1 - this.diseaseParams.vaccine_efficacy);
-
             for (const infector of infectious) {
                 for (const target of targets) {
                     if (target.state === 'S' || target.state === 'V') {
@@ -469,7 +477,7 @@
             }));
             this.chart = new Chart(this.els.uiPanel.historyChart, {
                 type: 'line', data: { labels: [], datasets: datasets },
-                options: { animation: { duration: 250 }, responsive: true, maintainAspectRatio: false,
+                options: { animation: false, responsive: true, maintainAspectRatio: false,
                     scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
             });
         },
@@ -498,8 +506,7 @@
             if (current_I > 0 && prev_I === 0) return "The outbreak has begun.";
             if (current_I > prev_I && !this.peakReached) return `Exponential growth phase. R(t) is ${this.stats.Rt.toFixed(2)}.`;
             if (current_I < prev_I && !this.peakReached && current_I > 0) {
-                this.peakReached = true;
-                return `Outbreak has peaked with ${this.peakInfected} infected.`;
+                this.peakReached = true; return `Outbreak has peaked with ${this.peakInfected} infected.`;
             }
             if(this.peakReached && current_I > 0) return "The outbreak is receding due to immunity and vaccinations.";
             if(current_I === 0 && current.E === 0 && this.ticks > 100) return `The epidemic has ended.`;
