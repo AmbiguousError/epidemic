@@ -43,6 +43,7 @@ This is a self-contained, single-file web application. No server or build proces
 
 * Simply download the `index.html` file.
 * Open it in a modern web browser like Chrome, Firefox, or Edge.
+* Or access website https://ambiguouserror.github.io/epidemic/ and https://ambiguouserror.github.io/epidemic/ai_dashboard.html
 
 ## Technologies Used
 
