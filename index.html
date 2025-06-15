@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JavaScript Epidemic Simulator</title>
     
+    <!-- Embedded CSS -->
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -70,6 +71,17 @@
         #disease-library li:hover { background-color: var(--button-hover-color); }
         #disease-library li.selected { border-color: var(--primary-color); background-color: #3e3e42; }
         
+        /* FIX: Flexbox layout for editor column */
+        #editor-column {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #editor-form-wrapper {
+            flex-grow: 1; /* Allow form to take up available space */
+            overflow-y: auto; /* Allow form to scroll */
+            padding-right: 10px;
+        }
         #editor-form { display: flex; flex-direction: column; gap: 1rem; }
         .form-section { border-left: 2px solid var(--border-color); padding-left: 15px;}
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -85,8 +97,8 @@
             font-size: 1em;
             width: 100%;
         }
-        .menu-actions { margin-top: auto; padding-top: 1rem; display: flex; flex-direction: column; gap: 10px; }
-        .menu-actions .button-row { display: flex; gap: 10px; }
+        #menu-actions-footer { margin-top: auto; padding-top: 1rem; flex-shrink: 0; } /* Keep buttons at bottom */
+        .button-row { display: flex; gap: 10px; margin-bottom: 10px; }
         button {
             background-color: var(--button-color);
             color: var(--text-color);
@@ -99,17 +111,12 @@
             flex-grow: 1;
         }
         button:hover { background-color: var(--button-hover-color); }
-        #start-sim-btn { background-color: var(--primary-color); color: var(--bg-color); font-weight: bold; padding: 12px; }
+        #start-sim-btn { background-color: var(--primary-color); color: var(--bg-color); font-weight: bold; padding: 12px; width: 100%; }
         #delete-profile-btn { background-color: #8b2828; }
         #error-message { color: var(--error-color); min-height: 20px; text-align: center; }
 
         /* --- Simulation View --- */
-        #simulation-view {
-            display: none; /* Initially hidden */
-            width: 100%;
-            height: 100%;
-            display: flex;
-        }
+        #simulation-view { display: none; width: 100%; height: 100%; }
         #simulation-canvas { background-color: #0a0a0b; }
         #ui-panel {
             width: 380px;
@@ -132,6 +139,7 @@
 
     <div class="main-container">
 
+        <!-- ==================== MENU VIEW ==================== -->
         <div id="menu-view">
             <header class="menu-header"><h1>Disease & Vaccine Simulator</h1></header>
             <div class="menu-content">
@@ -139,35 +147,39 @@
                     <h3>Disease Library</h3>
                     <ul id="disease-library"></ul>
                 </div>
-                <div class="menu-col">
+                <!-- FIX: Added ID and new wrapper div for form -->
+                <div class="menu-col" id="editor-column">
                     <h3>Profile Editor</h3>
-                    <form id="editor-form" onsubmit="return false;">
-                        <div class="form-group full-width">
-                            <label for="name">Disease Name</label>
-                            <input type="text" id="name">
-                        </div>
-                        <div class="form-section">
-                            <h3>Disease Parameters</h3>
-                            <div class="form-grid">
-                                <div class="form-group"><label for="R0">R0</label><input type="number" step="0.1" id="R0"></div>
-                                <div class="form-group"><label for="incubation_days">Incubation (d)</label><input type="number" step="1" id="incubation_days"></div>
-                                <div class="form-group"><label for="infectious_days">Infectious (d)</label><input type="number" step="1" id="infectious_days"></div>
-                                <div class="form-group"><label for="fatality_rate">Fatality Rate</label><input type="number" step="0.001" id="fatality_rate"></div>
-                                <div class="form-group"><label for="long_term_effect_rate">Long-Term Rate</label><input type="number" step="0.001" id="long_term_effect_rate"></div>
+                    <div id="editor-form-wrapper">
+                        <form id="editor-form" onsubmit="return false;">
+                            <div class="form-group full-width">
+                                <label for="name">Disease Name</label>
+                                <input type="text" id="name">
                             </div>
-                        </div>
-                         <div class="form-section">
-                            <h3>Vaccine & Campaign</h3>
-                            <div class="form-grid">
-                                <div class="form-group"><label for="vaccine_efficacy">Efficacy (0-1)</label><input type="number" step="0.01" id="vaccine_efficacy"></div>
-                                <div class="form-group"><label for="vaccine_mortality_rate">Vax Mortality</label><input type="number" step="0.000001" id="vaccine_mortality_rate"></div>
-                                <div class="form-group"><label for="vaccine_long_term_effect_rate">Vax Long-Term</label><input type="number" step="0.000001" id="vaccine_long_term_effect_rate"></div>
-                                <div class="form-group"><label for="initial_vax_rate">Initial Vax (0-1)</label><input type="number" step="0.01" id="initial_vax_rate"></div>
-                                <div class="form-group"><label for="daily_vax_rate">Daily Vax Rate</label><input type="number" step="1" id="daily_vax_rate"></div>
+                            <div class="form-section">
+                                <h3>Disease Parameters</h3>
+                                <div class="form-grid">
+                                    <div class="form-group"><label for="R0">R0</label><input type="number" step="0.1" id="R0"></div>
+                                    <div class="form-group"><label for="incubation_days">Incubation (d)</label><input type="number" step="1" id="incubation_days"></div>
+                                    <div class="form-group"><label for="infectious_days">Infectious (d)</label><input type="number" step="1" id="infectious_days"></div>
+                                    <div class="form-group"><label for="fatality_rate">Fatality Rate</label><input type="number" step="0.001" id="fatality_rate"></div>
+                                    <div class="form-group"><label for="long_term_effect_rate">Long-Term Rate</label><input type="number" step="0.001" id="long_term_effect_rate"></div>
+                                </div>
                             </div>
-                        </div>
-                    </form>
-                    <div class="menu-actions">
+                             <div class="form-section">
+                                <h3>Vaccine & Campaign</h3>
+                                <div class="form-grid">
+                                    <div class="form-group"><label for="vaccine_efficacy">Efficacy (0-1)</label><input type="number" step="0.01" id="vaccine_efficacy"></div>
+                                    <div class="form-group"><label for="vaccine_mortality_rate">Vax Mortality</label><input type="number" step="0.000001" id="vaccine_mortality_rate"></div>
+                                    <div class="form-group"><label for="vaccine_long_term_effect_rate">Vax Long-Term</label><input type="number" step="0.000001" id="vaccine_long_term_effect_rate"></div>
+                                    <div class="form-group"><label for="initial_vax_rate">Initial Vax (0-1)</label><input type="number" step="0.01" id="initial_vax_rate"></div>
+                                    <div class="form-group"><label for="daily_vax_rate">Daily Vax Rate</label><input type="number" step="1" id="daily_vax_rate"></div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- FIX: Grouped actions into a footer div -->
+                    <div id="menu-actions-footer">
                         <div class="button-row">
                              <button id="save-profile-btn">Save Profile</button>
                              <button id="delete-profile-btn">Delete Profile</button>
@@ -179,6 +191,7 @@
             </div>
         </div>
 
+        <!-- ==================== SIMULATION VIEW ==================== -->
         <div id="simulation-view">
             <canvas id="simulation-canvas"></canvas>
             <div id="ui-panel">
@@ -205,8 +218,10 @@
         </div>
     </div>
 
+    <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Embedded JavaScript Application -->
     <script>
     const App = {
         // =============== CONFIG & STATE ===============
@@ -310,7 +325,7 @@
             this.els.errorMessage.style.color = isError ? 'var(--error-color)' : 'var(--primary-color)';
         },
 
-        // =============== SIMULATION CONTROL (FIXED) ===============
+        // =============== SIMULATION CONTROL ===============
         startSimulation() {
             this.showError(''); 
             
@@ -339,7 +354,7 @@
 
             if (processedParams.infectious_days <= 0) { this.showError("Error: Infectious period must be > 0."); return; }
             if (processedParams.vaccine_efficacy > 1) { this.showError("Error: Vax Efficacy must be <= 1.0."); return; }
-            if (processed_params.initial_vax_rate > 1) { this.showError("Error: Initial Vax Rate must be <= 1.0."); return; }
+            if (processedParams.initial_vax_rate > 1) { this.showError("Error: Initial Vax Rate must be <= 1.0."); return; }
             
             this.diseaseParams = processedParams;
             this.diseaseParams.transmission_prob = this.diseaseParams.R0 / (this.AVG_CONTACTS_PER_DAY * this.diseaseParams.infectious_days);
