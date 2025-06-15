@@ -3,56 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epidemic Simulator</title>
-
-    <!-- Bootstrap CSS -->
+    <title>Epidemic Simulator with Gemini Analysis</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <!-- Bootstrap Icons for the back button -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
     <style>
+        /* Basic styles for layout and ensuring canvas fills its container */
         html, body {
-            overflow-x: hidden; /* Prevent horizontal scroll */
+            height: 100%;
+            overflow: hidden; /* Prevents scrollbars on the main body */
         }
-        .view {
-            width: 100%;
-            min-height: 100vh;
+        .main-container {
+            height: 100%;
+            max-width: 100%;
+            padding: 0;
         }
-        /* Make menu scrollable on mobile */
-        #menu-view {
-            overflow-y: auto;
-        }
-
-        /* --- Simulation View: Mobile First --- */
-        #simulation-view {
-            display: flex;
-            flex-direction: column; /* Stacked by default */
-            height: 100vh; /* Fixed height for the sim view */
-            max-height: 100vh;
-            overflow: hidden; /* Prevent whole view from scrolling */
-        }
-
-        #simulation-canvas-container {
-            height: 50vh; /* Top half of screen on mobile */
-            flex-shrink: 0;
+        .simulation-row {
+            height: 100%;
         }
         #simulation-canvas {
-            width: 100%;
+            background-color: #0a0a0b; /* Dark background for the simulation */
             height: 100%;
-            background-color: #0a0a0b;
+            width: 100%;
+            display: block;
         }
-
-        #ui-panel-container {
-            flex-grow: 1; /* Takes remaining space */
-            overflow-y: auto; /* Panel content is scrollable */
-        }
-        
         #ui-panel {
+            height: 100%;
+            overflow-y: auto; /* Allow scrolling on the UI panel if content overflows */
             display: flex;
             flex-direction: column;
-            min-height: 100%; /* For pushing chart to the bottom */
         }
-
+        /* Style for the colored squares in the stats legend */
         .key-color {
             display: inline-block;
             width: 15px;
@@ -61,522 +40,410 @@
             border-radius: 3px;
             vertical-align: middle;
         }
+        /* Container to ensure the chart maintains its aspect ratio but is responsive */
         .chart-container {
             position: relative;
-            height: 200px;
+            height: 220px;
             width: 100%;
-            margin-top: auto; /* Pushes chart to the bottom */
         }
-        .list-group-item-action {
-            cursor: pointer;
+        .list-group-item {
+            padding: 0.5rem 0.75rem; /* Compact list items for a cleaner look */
         }
-        label {
-            font-size: 0.8rem;
-            color: #adb5bd;
+        /* Styles for the Gemini-powered features */
+        #gemini-brief-modal .modal-body {
+            white-space: pre-wrap; /* Preserve formatting of the AI response */
+            max-height: 70vh;
+            overflow-y: auto;
         }
-        .error-message {
-            min-height: 24px;
-        }
-
-        /* --- Simulation View: Desktop Layout --- */
-        @media (min-width: 768px) {
-            #simulation-view {
-                flex-direction: row; /* Side-by-side */
-            }
-            #simulation-canvas-container {
-                flex-basis: 60%;
-                height: 100vh;
-            }
-            #ui-panel-container {
-                flex-basis: 40%;
-                height: 100vh;
-            }
-        }
-        
-        @media (min-width: 992px) {
-             #simulation-canvas-container {
-                flex-basis: 66.66667%; /* col-lg-8 width */
-            }
-            #ui-panel-container {
-                flex-basis: 33.33333%; /* col-lg-4 width */
-            }
+        #generate-brief-btn {
+            display: none; /* Initially hidden */
         }
     </style>
 </head>
 <body>
 
-    <!-- Menu View -->
-    <div id="menu-view" class="view p-3 p-md-4">
-        <div class="container-fluid">
-            <header class="text-center mb-4">
-                <h1 class="display-5">Epidemic & Vaccine Simulator</h1>
-                <p class="lead text-body-secondary">Choose a preset or create a custom disease profile to begin.</p>
-            </header>
-            <div class="row g-4">
-                <!-- Disease Presets Column -->
-                <div class="col-lg-4">
-                    <div class="card h-100">
-                        <div class="card-header">Disease Library</div>
-                        <div id="disease-list" class="list-group list-group-flush" style="overflow-y: auto;">
-                            <!-- Presets will be loaded here by JS -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Profile Editor Column -->
-                <div class="col-lg-8">
-                    <div class="card">
-                        <div class="card-header">Profile Editor</div>
-                        <div class="card-body">
-                            <form id="params-form" class="row g-3">
-                                <div class="col-md-12">
-                                    <label for="name" class="form-label">Disease Name</label>
-                                    <input type="text" class="form-control" id="name">
-                                </div>
-                                <!-- Disease Params -->
-                                <h5 class="mt-4 mb-0 h6">Disease Parameters</h5>
-                                <div class="col-md-4">
-                                    <label for="R0" class="form-label">R0</label>
-                                    <input type="number" step="0.1" class="form-control" id="R0">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="incubation_days" class="form-label">Incubation (days)</label>
-                                    <input type="number" step="1" class="form-control" id="incubation_days">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="infectious_days" class="form-label">Infectious (days)</label>
-                                    <input type="number" step="1" class="form-control" id="infectious_days">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="fatality_rate" class="form-label">Fatality Rate (0-1)</label>
-                                    <input type="number" step="0.001" class="form-control" id="fatality_rate">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="long_term_effect_rate" class="form-label">Long-Term Effect Rate (0-1)</label>
-                                    <input type="number" step="0.01" class="form-control" id="long_term_effect_rate">
-                                </div>
-                                <!-- Vaccine Params -->
-                                <h5 class="mt-4 mb-0 h6">Vaccine & Campaign Parameters</h5>
-                                <div class="col-md-6">
-                                    <label for="vaccine_efficacy" class="form-label">Efficacy (0-1)</label>
-                                    <input type="number" step="0.01" class="form-control" id="vaccine_efficacy">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="initial_vax_rate" class="form-label">Initial Vax Rate (0-1)</label>
-                                    <input type="number" step="0.01" class="form-control" id="initial_vax_rate">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="vaccine_mortality_rate" class="form-label">Mortality Rate</label>
-                                    <input type="number" step="0.000001" class="form-control" id="vaccine_mortality_rate">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="vaccine_long_term_effect_rate" class="form-label">Long-Term Rate</label>
-                                    <input type="number" step="0.00001" class="form-control" id="vaccine_long_term_effect_rate">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="daily_vax_rate" class="form-label">Daily Vax (per day)</label>
-                                    <input type="number" step="1" class="form-control" id="daily_vax_rate">
-                                </div>
-                                <!-- Action Buttons -->
-                                <div class="col-12 mt-4 d-grid">
-                                    <button id="start-sim-btn" type="button" class="btn btn-primary btn-lg">Start Simulation</button>
-                                    <div id="menu-error-message" class="text-danger mt-2 error-message"></div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+    <!-- Main container using Bootstrap's fluid grid system -->
+    <div class="container-fluid main-container">
+        <div class="row g-0 simulation-row">
+            <!-- Simulation Canvas Column -->
+            <div class="col-lg-8 col-md-7">
+                <canvas id="simulation-canvas"></canvas>
             </div>
-        </div>
-    </div>
 
-    <!-- Simulation View -->
-    <div id="simulation-view" class="view d-none">
-        <!-- Canvas Container -->
-        <div id="simulation-canvas-container">
-            <canvas id="simulation-canvas"></canvas>
-        </div>
+            <!-- UI Panel Column -->
+            <div class="col-lg-4 col-md-5">
+                <div id="ui-panel" class="p-3 bg-body-tertiary">
+                    <h2 class="h4">Live Analysis</h2>
+                    <h3 id="ui-disease-name" class="h5 text-primary mb-3">Loading...</h3>
 
-        <!-- UI Panel Container -->
-        <div id="ui-panel-container" class="bg-body-tertiary">
-            <div id="ui-panel" class="p-3">
-                <div> <!-- Flex item for main content -->
-                    <div class="d-flex justify-content-between align-items-center">
-                         <h2 class="h4 mb-0">Live Analysis</h2>
-                         <button id="back-to-menu-btn" class="btn btn-sm btn-outline-secondary">
-                             <i class="bi bi-arrow-left"></i> Menu
-                         </button>
-                    </div>
-                    <h3 id="ui-disease-name" class="h5 text-primary my-3"></h3>
                     <div class="row mb-3">
-                        <div class="col-6" id="ui-elapsed-days">Days: 0</div>
-                        <div class="col-6" id="ui-rt">R(t): 0.00</div>
-                        <div class="col-12 mt-2" id="ui-total-sick-days">Sick Days: 0</div>
+                        <div class="col-6 stats-item" id="ui-elapsed-days">Days: 0</div>
+                        <div class="col-6 stats-item" id="ui-rt">R(t): 0.00</div>
+                        <div class="col-12 stats-item mt-2" id="ui-total-sick-days">Sick Days: 0</div>
                     </div>
+
                     <ul id="ui-key" class="list-group list-group-flush mb-3"></ul>
-                    <h4 class="h6">Vaccine Outcomes</h4>
+
+                    <h4 class="h6 mt-2">Vaccine Outcomes</h4>
                     <div class="row mb-3">
-                        <div class="col-6" id="ui-vax-deaths">Fatalities: 0</div>
-                        <div class="col-6" id="ui-vax-long-term">Long-Term: 0</div>
+                        <div class="col-6 stats-item" id="ui-vax-deaths">Fatalities: 0</div>
+                        <div class="col-6 stats-item" id="ui-vax-long-term">Long-Term: 0</div>
                     </div>
+
                     <h4 class="h6">Commentary</h4>
-                    <p id="commentary" class="text-body-secondary fst-italic" style="min-height: 60px;">Initializing...</p>
-                </div>
-                <!-- Chart Container is pushed to the bottom by its container's flex properties -->
-                <div class="chart-container">
-                    <canvas id="history-chart"></canvas>
+                    <p id="ui-commentary" class="text-body-secondary fst-italic mb-3" style="min-height: 60px;">Initializing...</p>
+
+                     <!-- ✨ Gemini API Feature Button -->
+                    <div class="d-grid gap-2 mt-auto">
+                         <button id="generate-brief-btn" class="btn btn-primary" type="button">
+                            ✨ Generate Policy Brief
+                        </button>
+                    </div>
+
+                    <div class="chart-container mt-2">
+                        <canvas id="history-chart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Gemini Policy Brief Modal -->
+    <div class="modal fade" id="gemini-brief-modal" tabindex="-1" aria-labelledby="geminiBriefModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="geminiBriefModalLabel">✨ AI-Generated Policy Brief</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <!-- Content will be injected here by JavaScript -->
+          </div>
+          <div class="modal-footer">
+            <small class="text-muted me-auto">Generated by the Gemini API</small>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Application Script -->
-    <script>
-    const App = {
-        // =============== CONFIG & STATE ===============
-        els: {}, currentView: 'MENU', simulationRunning: false,
-        POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
-        population: [], diseaseParams: {}, history: [],
-        ticks: 0, stats: {}, peakInfected: 0, peakReached: false,
-        totalSickDays: 0, vaxDeaths: 0, vaxLongTerm: 0, vaccinationCounter: 0, chart: null,
+    <!-- Main Application Logic -->
+    <script type="module">
+        // =================================================================
+        // CONFIGURATION & CONSTANTS
+        // =================================================================
 
-        DISEASE_PRESETS: {
-            "Influenza": {"R0": "1.3", "incubation_days": "2", "infectious_days": "5", "fatality_rate": "0.001", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.5", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.000001", "initial_vax_rate": "0.4", "daily_vax_rate": "2"},
-            "COVID-19": {"R0": "2.5", "incubation_days": "5", "infectious_days": "7", "fatality_rate": "0.01", "long_term_effect_rate": "0.10", "vaccine_efficacy": "0.9", "vaccine_mortality_rate": "0.000002", "vaccine_long_term_effect_rate": "0.00005", "initial_vax_rate": "0.0", "daily_vax_rate": "8"},
-            "Ebola": {"R0": "2.0", "incubation_days": "8", "infectious_days": "6", "fatality_rate": "0.5", "long_term_effect_rate": "0.05", "vaccine_efficacy": "0.97", "vaccine_mortality_rate": "0.00001", "vaccine_long_term_effect_rate": "0.0001", "initial_vax_rate": "0.0", "daily_vax_rate": "1"},
-            "Measles": {"R0": "15", "incubation_days": "10", "infectious_days": "8", "fatality_rate": "0.002", "long_term_effect_rate": "0.001", "vaccine_efficacy": "0.97", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.8", "daily_vax_rate": "0"},
-            "Chickenpox": {"R0": "11", "incubation_days": "14", "infectious_days": "7", "fatality_rate": "0.0001", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.9", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.7", "daily_vax_rate": "0"},
-            "Mumps": {"R0": "5", "incubation_days": "18", "infectious_days": "7", "fatality_rate": "0.0001", "long_term_effect_rate": "0.01", "vaccine_efficacy": "0.88", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.8", "daily_vax_rate": "0"},
-            "Pertussis": {"R0": "15", "incubation_days": "9", "infectious_days": "21", "fatality_rate": "0.005", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.85", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.6", "daily_vax_rate": "1"},
-            "Polio": {"R0": "6", "incubation_days": "10", "infectious_days": "14", "fatality_rate": "0.005", "long_term_effect_rate": "0.01", "vaccine_efficacy": "0.99", "vaccine_mortality_rate": "0.0000004", "vaccine_long_term_effect_rate": "0.0000004", "initial_vax_rate": "0.5", "daily_vax_rate": "5"},
-            "Smallpox": {"R0": "6", "incubation_days": "12", "infectious_days": "9", "fatality_rate": "0.3", "long_term_effect_rate": "0.05", "vaccine_efficacy": "0.95", "vaccine_mortality_rate": "0.00001", "vaccine_long_term_effect_rate": "0.0001", "initial_vax_rate": "0.0", "daily_vax_rate": "10"},
-        },
+        const SIM_CONFIG = {
+            POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
+        };
 
-        // =============== INITIALIZATION ===============
-        init() {
-            // Cache all DOM elements
-            this.els = {
-                menuView: document.getElementById('menu-view'),
-                simView: document.getElementById('simulation-view'),
-                diseaseList: document.getElementById('disease-list'),
-                paramsForm: document.getElementById('params-form'),
-                startBtn: document.getElementById('start-sim-btn'),
-                backBtn: document.getElementById('back-to-menu-btn'),
-                menuError: document.getElementById('menu-error-message'),
-                simCanvas: document.getElementById('simulation-canvas'),
-                uiPanel: { // UI elements for the simulation panel
-                    name: document.getElementById('ui-disease-name'),
-                    days: document.getElementById('ui-elapsed-days'),
-                    rt: document.getElementById('ui-rt'),
-                    sickDays: document.getElementById('ui-total-sick-days'),
-                    key: document.getElementById('ui-key'),
-                    vaxDeaths: document.getElementById('ui-vax-deaths'),
-                    vaxLongTerm: document.getElementById('ui-vax-long-term'),
-                    commentary: document.getElementById('commentary'),
-                    historyChart: document.getElementById('history-chart').getContext('2d'),
-                },
-            };
-            this.ctx = this.els.simCanvas.getContext('2d');
-            this.setupMenu(); // Set up the menu listeners and content
-            this.showView('MENU'); // Start on the menu screen
-        },
+        const AGENT_COLORS = { S: '#0d6efd', V: '#6f42c1', E: '#ffc107', I: '#dc3545', R_FULL: '#198754', R_LONG: '#0a5837', D: '#6c757d' };
+        const STATE_NAMES = { S: 'Susceptible', V: 'Vaccinated', E: 'Exposed', I: 'Infectious', R_FULL: 'Recovered (Full)', R_LONG: 'Recovered (Long)', D: 'Deceased' };
+        const DEFAULT_DISEASE_PROFILE = {
+            name: "COVID-19 (Default)", R0: 2.5, incubation_days: 5, infectious_days: 7, fatality_rate: 0.01, long_term_effect_rate: 0.10,
+            vaccine_efficacy: 0.9, vaccine_mortality_rate: 0.000002, vaccine_long_term_effect_rate: 0.000005,
+            initial_vax_rate: 0.1, daily_vax_rate: 8
+        };
 
-        // =============== VIEW & MENU MANAGEMENT ===============
-        showView(viewName) {
-            this.currentView = viewName;
-            this.els.menuView.classList.toggle('d-none', viewName !== 'MENU');
-            this.els.simView.classList.toggle('d-none', viewName !== 'SIMULATION');
 
-            if (viewName === 'SIMULATION') {
-                this.simulationRunning = true;
-                // Defer canvas resize and simulation start until after the view is visible
-                requestAnimationFrame(() => {
-                    this.resetSimulationState();
-                    this.gameLoop();
-                });
-            } else {
-                this.simulationRunning = false;
+        // =================================================================
+        // AGENT CLASS
+        // =================================================================
+        class Agent {
+            constructor(state, width, height) {
+                this.x = Math.random() * width; this.y = Math.random() * height;
+                this.radius = SIM_CONFIG.AGENT_RADIUS; this.state = state; this.timer = 0;
+                const angle = Math.random() * 2 * Math.PI; this.speed = 0.5 + Math.random();
+                this.dx = Math.cos(angle) * this.speed; this.dy = Math.sin(angle) * this.speed;
             }
-        },
-
-        setupMenu() {
-            // Populate the disease list
-            this.els.diseaseList.innerHTML = Object.keys(this.DISEASE_PRESETS)
-                .map(name => `<a class="list-group-item list-group-item-action" data-name="${name}">${name}</a>`)
-                .join('');
-
-            // Add click listener to the list
-            this.els.diseaseList.addEventListener('click', e => {
-                if (e.target.matches('[data-name]')) {
-                    const name = e.target.dataset.name;
-                    this.loadPreset(name);
-                    // De-select any active items and select the new one
-                    const active = this.els.diseaseList.querySelector('.active');
-                    if (active) active.classList.remove('active');
-                    e.target.classList.add('active');
-                }
-            });
-            
-            // Add click listeners for the main buttons
-            this.els.startBtn.addEventListener('click', () => this.handleStartSimulation());
-            this.els.backBtn.addEventListener('click', () => this.showView('MENU'));
-            
-            // Load the first preset by default
-            this.loadPreset(Object.keys(this.DISEASE_PRESETS)[0]);
-            this.els.diseaseList.firstElementChild.classList.add('active');
-        },
-        
-        loadPreset(name) {
-            const preset = this.DISEASE_PRESETS[name];
-            if (!preset) return;
-            this.els.paramsForm.elements['name'].value = name;
-            for (const key in preset) {
-                if(this.els.paramsForm.elements[key]) {
-                    this.els.paramsForm.elements[key].value = preset[key];
-                }
+            move(width, height) {
+                if (this.state === 'D') return;
+                this.x += this.dx; this.y += this.dy;
+                if (this.x <= this.radius || this.x >= width - this.radius) this.dx *= -1;
+                if (this.y <= this.radius || this.y >= height - this.radius) this.dy *= -1;
             }
-            this.els.menuError.textContent = ''; // Clear any previous errors
-        },
-
-        handleStartSimulation() {
-            const form = this.els.paramsForm;
-            const params = {};
-            let isValid = true;
-            
-            // Validate and collect parameters from the form
-            const paramKeys = Object.keys(this.DISEASE_PRESETS.Influenza); // Use any preset for keys
-            paramKeys.forEach(key => {
-                const input = form.elements[key];
-                const value = parseFloat(input.value);
-                if (isNaN(value) || value < 0) {
-                    isValid = false;
-                }
-                params[key] = value;
-            });
-            
-            const name = form.elements['name'].value.trim();
-            if (!name) isValid = false;
-
-            if (!isValid) {
-                this.els.menuError.textContent = 'Error: Please ensure all fields are filled with valid, non-negative numbers.';
-                return;
-            }
-
-            // Set disease parameters
-            this.diseaseParams = { name, ...params };
-            this.diseaseParams.transmission_prob = this.diseaseParams.R0 / (this.AVG_CONTACTS_PER_DAY * this.diseaseParams.infectious_days);
-            this.diseaseParams.incubation_ticks = Math.round(this.diseaseParams.incubation_days * this.TICKS_PER_DAY);
-            this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
-            
-            // Switch to simulation view
-            this.showView('SIMULATION');
-        },
-        
-        // =============== SIMULATION CONTROL ===============
-        resetSimulationState() {
-            this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
-            this.peakReached = false; this.history = []; this.els.menuError.textContent = '';
-            
-            this.resizeCanvas();
-
-            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
-            const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
-            this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
-            
-            const patientZero = this.population.find(a => a.state === 'S');
-            if(patientZero){ patientZero.state = 'E'; patientZero.timer = this.diseaseParams.incubation_ticks; }
-            
-            this.updateStats();
-            this.history.push(this.stats.counts);
-            this.stats.commentary = "Simulation starting...";
-            this.initChart();
-        },
-
-        // =============== CORE SIMULATION LOOP ===============
-        gameLoop() {
-            if (!this.simulationRunning) return;
-            this.update();
-            this.render();
-            requestAnimationFrame(() => this.gameLoop());
-        },
-        update() {
-            this.ticks++; this.handleVaccinationCampaign(); this.handleInfections();
-            this.population.forEach(agent => {
-                agent.move(this.els.simCanvas.width, this.els.simCanvas.height);
-                agent.update_state(this.diseaseParams);
-            });
-            this.updateStats();
-        },
-        render() {
-            this.ctx.clearRect(0, 0, this.els.simCanvas.width, this.els.simCanvas.height);
-            this.population.forEach(agent => agent.draw(this.ctx));
-            this.updateUI();
-        },
-        
-        // =============== SIMULATION LOGIC (Unchanged from previous version) ===============
-        vaccinateAgent(agent) {
-            if (agent.state !== 'S') return;
-            if (Math.random() < this.diseaseParams.vaccine_mortality_rate) { agent.state = 'D'; this.vaxDeaths++; }
-            else if (Math.random() < this.diseaseParams.vaccine_long_term_effect_rate) { agent.state = 'R_LONG'; agent.speed *= 0.4; this.vaxLongTerm++; }
-            else { agent.state = 'V'; }
-        },
-        handleVaccinationCampaign() {
-            this.vaccinationCounter += this.diseaseParams.daily_vax_rate / this.TICKS_PER_DAY;
-            if (this.vaccinationCounter >= 1) {
-                const numToVaccinate = Math.floor(this.vaccinationCounter);
-                const susceptible = this.population.filter(a => a.state === 'S');
-                if(susceptible.length > 0) {
-                    for(let i=0; i < Math.min(numToVaccinate, susceptible.length); i++) this.vaccinateAgent(susceptible[i]);
-                }
-                this.vaccinationCounter -= numToVaccinate;
-            }
-        },
-        handleInfections() {
-            const infectious = this.population.filter(a => a.state === 'I');
-            if(infectious.length === 0) return;
-            const targets = this.population.filter(a => a.state === 'S' || a.state === 'V');
-            const vax_prob = this.diseaseParams.transmission_prob * (1 - this.diseaseParams.vaccine_efficacy);
-            for (const infector of infectious) {
-                for (const target of targets) {
-                    if (target.state !== 'S' && target.state !== 'V') continue;
-                    const distSq = (infector.x - target.x)**2 + (infector.y - target.y)**2;
-                    if (distSq < (this.AGENT_RADIUS * 4)**2) {
-                        const prob = target.state === 'S' ? this.diseaseParams.transmission_prob : vax_prob;
-                        if (Math.random() < prob) { target.state = 'E'; target.timer = this.diseaseParams.incubation_ticks; }
-                    }
-                }
-            }
-        },
-        
-        // =============== UI & CANVAS & CHART ===============
-        resizeCanvas() {
-            const canvasContainer = this.els.simCanvas.parentElement;
-            this.els.simCanvas.width = canvasContainer.offsetWidth;
-            this.els.simCanvas.height = canvasContainer.offsetHeight;
-        },
-        updateUI() {
-            this.els.uiPanel.name.textContent = this.diseaseParams.name;
-            this.els.uiPanel.days.textContent = `Days: ${this.stats.elapsed_days}`;
-            this.els.uiPanel.rt.textContent = `R(t): ${this.stats.Rt.toFixed(2)}`;
-            this.els.uiPanel.sickDays.textContent = `Sick Days: ${Math.floor(this.totalSickDays)}`;
-            this.els.uiPanel.vaxDeaths.textContent = `Fatalities: ${this.vaxDeaths}`;
-            this.els.uiPanel.vaxLongTerm.textContent = `Long-Term: ${this.vaxLongTerm}`;
-            this.els.uiPanel.commentary.textContent = this.stats.commentary;
-            
-            let keyHTML = '';
-            for(const state in this.stats.counts) {
-                const count = this.stats.counts[state];
-                const percent = ((count / this.POPULATION_SIZE) * 100).toFixed(1);
-                const color = AGENT_COLORS[state];
-                keyHTML += `<li class="list-group-item bg-transparent border-secondary py-1"><div class="key-color" style="background-color:${color};"></div> ${STATE_NAMES[state]}: ${count} (${percent}%)</li>`;
-            }
-            this.els.uiPanel.key.innerHTML = keyHTML;
-            if (this.ticks > 0 && this.ticks % this.TICKS_PER_DAY === 0) this.updateChart();
-        },
-        initChart() {
-            if (this.chart) this.chart.destroy();
-            const datasets = Object.keys(AGENT_COLORS).map(key => ({
-                label: STATE_NAMES[key], data: [], backgroundColor: AGENT_COLORS[key],
-                borderColor: AGENT_COLORS[key], fill: true, pointRadius: 0, borderWidth: 1
-            }));
-            Chart.defaults.color = '#adb5bd';
-            this.chart = new Chart(this.els.uiPanel.historyChart, {
-                type: 'line', data: { labels: [], datasets: datasets },
-                options: {
-                    animation: false, responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { stacked: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, min: 0, max: this.POPULATION_SIZE }
-                    }
-                }
-            });
-        },
-        updateChart() {
-            this.chart.data.labels = this.history.map((_, i) => i);
-            this.chart.data.datasets.forEach(dataset => {
-                const key = Object.keys(STATE_NAMES).find(k => STATE_NAMES[k] === dataset.label);
-                dataset.data = this.history.map(h => h[key] || 0);
-            });
-            this.chart.update('none');
-        },
-        updateStats() {
-            const previous_counts = this.stats.counts || {};
-            const counts = { S: 0, V: 0, E: 0, I: 0, R_FULL: 0, R_LONG: 0, D: 0 };
-            this.population.forEach(a => { counts[a.state]++; });
-            const effectiveSusceptible = counts.S + (counts.V * (1 - this.diseaseParams.vaccine_efficacy));
-            const Rt = this.diseaseParams.R0 * (effectiveSusceptible / this.POPULATION_SIZE);
-            this.totalSickDays += counts.I / this.TICKS_PER_DAY;
-            const commentary = this.getCommentary(counts, previous_counts);
-            this.stats = { counts, elapsed_days: Math.floor(this.ticks / this.TICKS_PER_DAY), Rt, commentary };
-            if (this.ticks > 0 && this.ticks % this.TICKS_PER_DAY === 0) this.history.push(this.stats.counts);
-            if(commentary.startsWith("The epidemic has ended")) this.simulationRunning = false;
-        },
-        getCommentary(current, prev){
-            const current_I = current.I || 0; const prev_I = prev.I || 0;
-            if(current_I > this.peakInfected) this.peakInfected = current_I;
-            if (current_I > 0 && prev_I === 0) return "The outbreak has begun.";
-            if (current_I > prev_I && !this.peakReached) return `Exponential growth phase. R(t) is ${this.stats.Rt.toFixed(2)}.`;
-            if (current_I < prev_I && !this.peakReached && current_I > 0) {
-                this.peakReached = true; return `Outbreak has peaked with ${this.peakInfected} infected.`;
-            }
-            if(this.peakReached && current_I > 0) return "The outbreak is receding due to immunity and vaccinations.";
-            if(current_I === 0 && current.E === 0 && this.ticks > 100) return `The epidemic has ended.`;
-            return this.stats.commentary || "Simulation in progress...";
-        }
-    };
-
-    // =============== JAVASCRIPT AGENT CLASS ===============
-    const AGENT_COLORS = {S: '#0d6efd', V: '#6f42c1', E: '#ffc107', I: '#dc3545', R_FULL: '#198754', R_LONG: '#0a5837', D: '#6c757d'};
-    const STATE_NAMES = {S: 'Susceptible', V: 'Vaccinated', E: 'Exposed', I: 'Infectious', R_FULL: 'Recovered (Full)', R_LONG: 'Recovered (Long)', D: 'Deceased'};
-
-    class Agent {
-        constructor(state, width, height) {
-            this.x = Math.random() * width; this.y = Math.random() * height;
-            this.radius = App.AGENT_RADIUS; this.state = state; this.timer = 0;
-            const angle = Math.random() * 2 * Math.PI; this.speed = 0.5 + Math.random();
-            this.dx = Math.cos(angle) * this.speed; this.dy = Math.sin(angle) * this.speed;
-        }
-        move(width, height) {
-            if (this.state === 'D') return;
-            this.x += this.dx; this.y += this.dy;
-            if (this.x <= this.radius || this.x >= width - this.radius) this.dx *= -1;
-            if (this.y <= this.radius || this.y >= height - this.radius) this.dy *= -1;
-        }
-        update_state(diseaseParams) {
-            if (this.state === 'E' || this.state === 'I') {
+            updateState(diseaseParams) {
+                if (this.state !== 'E' && this.state !== 'I') return;
                 this.timer--;
                 if (this.timer <= 0) {
                     if (this.state === 'E') { this.state = 'I'; this.timer = diseaseParams.infectious_ticks; }
                     else if (this.state === 'I') {
-                        if (Math.random() < diseaseParams.fatality_rate) this.state = 'D';
+                        if (Math.random() < diseaseParams.fatality_rate) { this.state = 'D'; }
                         else if (Math.random() < diseaseParams.long_term_effect_rate) { this.state = 'R_LONG'; this.speed *= 0.4; }
-                        else this.state = 'R_FULL';
+                        else { this.state = 'R_FULL'; }
                     }
                 }
             }
         }
-        draw(ctx) {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
-            ctx.fillStyle = AGENT_COLORS[this.state];
-            ctx.fill();
-        }
-    }
-    
-    // =============== START THE APP ===============
-    document.addEventListener('DOMContentLoaded', () => App.init());
-    window.addEventListener('resize', () => {
-        if (App.currentView === 'SIMULATION') {
-            App.resizeCanvas();
-        }
-    });
 
-    </script>
-</body>
-</html>
+        // =================================================================
+        // RENDERER CLASS
+        // =================================================================
+        class Renderer {
+            constructor(canvas) {
+                this.canvas = canvas; this.ctx = canvas.getContext('2d');
+            }
+            render(population) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                for (const agent of population) {
+                    this.ctx.beginPath(); this.ctx.arc(agent.x, agent.y, agent.radius, 0, 2 * Math.PI);
+                    this.ctx.fillStyle = AGENT_COLORS[agent.state]; this.ctx.fill();
+                }
+            }
+            resize() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.offsetWidth; this.canvas.height = container.offsetHeight;
+            }
+        }
+
+        // =================================================================
+        // UI CLASS
+        // =================================================================
+        class UI {
+            constructor() {
+                this.dom = {
+                    name: document.getElementById('ui-disease-name'), days: document.getElementById('ui-elapsed-days'),
+                    rt: document.getElementById('ui-rt'), sickDays: document.getElementById('ui-total-sick-days'),
+                    key: document.getElementById('ui-key'), vaxDeaths: document.getElementById('ui-vax-deaths'),
+                    vaxLongTerm: document.getElementById('ui-vax-long-term'), commentary: document.getElementById('ui-commentary'),
+                    chartCtx: document.getElementById('history-chart').getContext('2d'),
+                    generateBriefBtn: document.getElementById('generate-brief-btn'),
+                    geminiModal: new bootstrap.Modal(document.getElementById('gemini-brief-modal')),
+                    geminiModalBody: document.querySelector('#gemini-brief-modal .modal-body'),
+                };
+                this.chart = null; this.statListItems = {};
+                this.createStatList();
+            }
+            createStatList() {
+                this.dom.key.innerHTML = '';
+                for (const state in STATE_NAMES) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center';
+                    const label = document.createElement('span'); const colorBox = document.createElement('div');
+                    colorBox.className = 'key-color'; colorBox.style.backgroundColor = AGENT_COLORS[state];
+                    label.appendChild(colorBox); label.append(STATE_NAMES[state]);
+                    const value = document.createElement('span'); value.className = 'badge bg-light text-dark rounded-pill';
+                    li.appendChild(label); li.appendChild(value);
+                    this.dom.key.appendChild(li); this.statListItems[state] = value;
+                }
+            }
+            update(stats, diseaseName) {
+                this.dom.name.textContent = diseaseName;
+                this.dom.days.textContent = `Days: ${stats.elapsed_days}`;
+                this.dom.rt.textContent = `R(t): ${stats.Rt.toFixed(2)}`;
+                this.dom.sickDays.textContent = `Sick Days: ${Math.floor(stats.totalSickDays)}`;
+                this.dom.vaxDeaths.textContent = `Fatalities: ${stats.vaxDeaths}`;
+                this.dom.vaxLongTerm.textContent = `Long-Term: ${stats.vaxLongTerm}`;
+                this.dom.commentary.textContent = stats.commentary;
+                for (const state in this.statListItems) {
+                    const count = stats.counts[state] || 0;
+                    const percent = ((count / SIM_CONFIG.POPULATION_SIZE) * 100).toFixed(1);
+                    this.statListItems[state].textContent = `${count} (${percent}%)`;
+                }
+            }
+            setBriefButtonState(visible) {
+                this.dom.generateBriefBtn.style.display = visible ? 'block' : 'none';
+            }
+            showGeminiBrief(content, isLoading = false) {
+                if (isLoading) {
+                    this.dom.geminiModalBody.innerHTML = `<div class="d-flex justify-content-center align-items-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div><strong class="ms-3">Generating analysis...</strong></div>`;
+                } else {
+                    this.dom.geminiModalBody.textContent = content;
+                }
+                this.dom.geminiModal.show();
+            }
+            initChart() {
+                if (this.chart) this.chart.destroy();
+                const datasets = Object.keys(AGENT_COLORS).map(key => ({
+                    label: STATE_NAMES[key], data: [], backgroundColor: AGENT_COLORS[key] + 'B3',
+                    borderColor: AGENT_COLORS[key], fill: true, pointRadius: 0, borderWidth: 1, tension: 0.1
+                }));
+                Chart.defaults.color = '#adb5bd';
+                this.chart = new Chart(this.dom.chartCtx, {
+                    type: 'line', data: { labels: [], datasets: datasets },
+                    options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                        scales: { x: { stacked: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                                  y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, min: 0, max: SIM_CONFIG.POPULATION_SIZE } }
+                    }
+                });
+            }
+            updateChart(history) {
+                this.chart.data.labels = history.map((_, i) => i);
+                this.chart.data.datasets.forEach(dataset => {
+                    const key = Object.keys(STATE_NAMES).find(k => STATE_NAMES[k] === dataset.label);
+                    dataset.data = history.map(h => h[key] || 0);
+                });
+                this.chart.update('none');
+            }
+        }
+
+
+        // =================================================================
+        // SIMULATION CLASS
+        // =================================================================
+        class Simulation {
+            constructor(width, height) {
+                this.width = width; this.height = height; this.population = [];
+                this.diseaseParams = {}; this.history = []; this.ticks = 0;
+                this.peakInfected = 0; this.peakReached = false; this.totalSickDays = 0;
+                this.vaxDeaths = 0; this.vaxLongTerm = 0; this.vaccinationCounter = 0; this.isRunning = false;
+                this.setDiseaseParameters(); this.reset();
+            }
+            setDiseaseParameters() {
+                const profile = { ...DEFAULT_DISEASE_PROFILE };
+                this.diseaseParams = { ...profile,
+                    transmission_prob: profile.R0 / (SIM_CONFIG.AVG_CONTACTS_PER_DAY * profile.infectious_days),
+                    incubation_ticks: Math.round(profile.incubation_days * SIM_CONFIG.TICKS_PER_DAY),
+                    infectious_ticks: Math.round(profile.infectious_days * SIM_CONFIG.TICKS_PER_DAY),
+                };
+            }
+            reset() {
+                this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
+                this.peakReached = false; this.history = []; this.isRunning = true;
+                this.population = Array.from({ length: SIM_CONFIG.POPULATION_SIZE }, () => new Agent('S', this.width, this.height));
+                const numToVax = Math.floor(SIM_CONFIG.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
+                this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
+                const patientZero = this.population.find(a => a.state === 'S');
+                if (patientZero) { patientZero.state = 'E'; patientZero.timer = this.diseaseParams.incubation_ticks; }
+            }
+            update() {
+                if (!this.isRunning) return; this.ticks++;
+                this.handleVaccinationCampaign(); this.handleInfections();
+                for (const agent of this.population) { agent.move(this.width, this.height); agent.updateState(this.diseaseParams); }
+            }
+            vaccinateAgent(agent) {
+                if (agent.state !== 'S') return;
+                if (Math.random() < this.diseaseParams.vaccine_mortality_rate) { agent.state = 'D'; this.vaxDeaths++; }
+                else if (Math.random() < this.diseaseParams.vaccine_long_term_effect_rate) { agent.state = 'R_LONG'; agent.speed *= 0.4; this.vaxLongTerm++; }
+                else { agent.state = 'V'; }
+            }
+            handleVaccinationCampaign() {
+                this.vaccinationCounter += this.diseaseParams.daily_vax_rate / SIM_CONFIG.TICKS_PER_DAY;
+                if (this.vaccinationCounter >= 1) {
+                    const numToVaccinate = Math.floor(this.vaccinationCounter);
+                    const susceptible = this.population.filter(a => a.state === 'S');
+                    if (susceptible.length > 0) {
+                        for (let i = 0; i < Math.min(numToVaccinate, susceptible.length); i++) { this.vaccinateAgent(susceptible[i]); }
+                    }
+                    this.vaccinationCounter -= numToVaccinate;
+                }
+            }
+            handleInfections() {
+                const infectious = this.population.filter(a => a.state === 'I'); if (infectious.length === 0) return;
+                const targets = this.population.filter(a => a.state === 'S' || a.state === 'V');
+                const vaxProb = this.diseaseParams.transmission_prob * (1 - this.diseaseParams.vaccine_efficacy);
+                for (const infector of infectious) {
+                    for (const target of targets) {
+                        if (target.state === 'S' || target.state === 'V') {
+                            const distSq = (infector.x - target.x) ** 2 + (infector.y - target.y) ** 2;
+                            if (distSq < (infector.radius * 4) ** 2) {
+                                const prob = target.state === 'S' ? this.diseaseParams.transmission_prob : vaxProb;
+                                if (Math.random() < prob) { target.state = 'E'; target.timer = this.diseaseParams.incubation_ticks; }
+                            }
+                        }
+                    }
+                }
+            }
+            getStats(lastCommentary) {
+                const counts = { S: 0, V: 0, E: 0, I: 0, R_FULL: 0, R_LONG: 0, D: 0 };
+                for (const agent of this.population) { counts[agent.state]++; }
+                this.totalSickDays += counts.I / SIM_CONFIG.TICKS_PER_DAY;
+                const effectiveSusceptible = counts.S + (counts.V * (1 - this.diseaseParams.vaccine_efficacy));
+                const Rt = this.diseaseParams.R0 * (effectiveSusceptible / SIM_CONFIG.POPULATION_SIZE);
+                const currentCommentary = this.getCommentary(counts, lastCommentary);
+                if (currentCommentary.startsWith("The epidemic has ended")) this.isRunning = false;
+                return { counts, elapsed_days: Math.floor(this.ticks / SIM_CONFIG.TICKS_PER_DAY), Rt, totalSickDays: this.totalSickDays,
+                         vaxDeaths: this.vaxDeaths, vaxLongTerm: this.vaxLongTerm, commentary: currentCommentary };
+            }
+            getCommentary(currentCounts, lastCommentary) {
+                const currentI = currentCounts.I; if (currentI > this.peakInfected) this.peakInfected = currentI;
+                if (currentI > 0 && !this.peakReached && this.history.length > 1 && this.history[this.history.length-1].I === 0) return "The outbreak has begun.";
+                if (currentI > 0 && !this.peakReached && this.history.length > 1 && currentI > this.history[this.history.length-1].I) return `Exponential growth phase.`;
+                if (currentI > 0 && !this.peakReached && this.history.length > 1 && currentI < this.history[this.history.length-1].I) {
+                    this.peakReached = true; return `Outbreak has peaked with ${this.peakInfected} infected.`;
+                }
+                if (this.peakReached && currentI > 0) return "The outbreak is receding due to immunity.";
+                if (currentI === 0 && currentCounts.E === 0 && this.ticks > 100) return `The epidemic has ended.`;
+                return lastCommentary || "Simulation in progress...";
+            }
+        }
+
+
+        // =================================================================
+        // MAIN APP CONTROLLER
+        // =================================================================
+        class App {
+            constructor() {
+                this.canvas = document.getElementById('simulation-canvas');
+                this.renderer = new Renderer(this.canvas);
+                this.ui = new UI();
+                this.simulation = null; this.lastStats = {}; this.animationFrameId = null;
+            }
+            init() {
+                this.renderer.resize();
+                this.simulation = new Simulation(this.canvas.width, this.canvas.height);
+                this.ui.initChart();
+                window.addEventListener('resize', () => this.handleResize());
+                this.ui.dom.generateBriefBtn.addEventListener('click', () => this.generatePolicyBrief());
+                this.gameLoop();
+            }
+            handleResize() {
+                this.renderer.resize();
+                if (this.simulation) { this.simulation.width = this.canvas.width; this.simulation.height = this.canvas.height; }
+            }
+            gameLoop() {
+                const sim = this.simulation;
+                sim.update();
+                this.lastStats = sim.getStats(this.lastStats.commentary);
+                this.renderer.render(sim.population);
+                this.ui.update(this.lastStats, sim.diseaseParams.name);
+                if (sim.ticks % SIM_CONFIG.TICKS_PER_DAY === 0) {
+                    sim.history.push(this.lastStats.counts);
+                    this.ui.updateChart(sim.history);
+                }
+                if (sim.isRunning) {
+                    this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
+                } else {
+                    this.ui.setBriefButtonState(true); // Show button when simulation ends
+                }
+            }
+            
+            // ======================== GEMINI API INTEGRATION ========================
+            async generatePolicyBrief() {
+                this.ui.showGeminiBrief(null, true); // Show loading state
+
+                const { diseaseParams } = this.simulation;
+                const { elapsed_days, counts, vaxDeaths, vaxLongTerm } = this.lastStats;
+                const totalFatalities = counts.D;
+
+                // Construct a detailed prompt for the Gemini API
+                const prompt = `
+                    Act as a public health advisor analyzing a simulated epidemic.
+                    Based on the following data, generate a concise policy briefing (3-4 paragraphs).
+                    The tone should be formal and informative.
+
+                    **Simulation Data:**
+                    - Disease Name: ${diseaseParams.name}
+                    - R0 (Basic Reproduction Number): ${diseaseParams.R0}
+                    - Fatality Rate: ${(diseaseParams.fatality_rate * 100).toFixed(2)}%
+                    - Duration of Outbreak: ${elapsed_days} days
+                    - Peak Infected Population: ${this.simulation.peakInfected} individuals
+                    - Total Fatalities (from disease): ${totalFatalities - vaxDeaths}
+                    - Total with Long-Term Effects (from disease): ${counts.R_LONG - vaxLongTerm}
+
+                    **Vaccination Campaign Data:**
+                    - Vaccine Efficacy: ${(diseaseParams.vaccine_efficacy * 100)}%
+                    - Initial Vaccination Rate: ${(diseaseParams.initial_vax_rate * 100)}% of population
+                    - Daily Vaccinations: ${diseaseParams.daily_vax_rate} people per day
+                    - Vaccine-related Fatalities: ${vaxDeaths}
+                    - Vaccine-related Long-Term Effects: ${vaxLongTerm}
+
+                    **Briefing Structure:**
+                    1.  **Executive Summary:** Briefly summarize the event, mentioning the disease, its duration, and the overall outcome (e.g., controlled, severe).
+                    2.  **Impact Analysis:** Discuss the key impacts, focusing on the total fatalities and the number of individuals with long-term effects. Briefly comment on the effectiveness of the vaccination campaign given the data.
+                    3.  **Recommendations:** Provide 
