@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JavaScript Epidemic Simulator</title>
     
+    <!-- Embedded CSS -->
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -38,6 +39,7 @@
             display: flex;
             border: 1px solid var(--border-color);
             background-color: var(--panel-bg-color);
+            overflow: hidden;
         }
         /* --- Menu View --- */
         #menu-view {
@@ -48,9 +50,9 @@
         }
         .menu-header { text-align: center; color: var(--primary-color); }
         .menu-content { display: flex; flex-grow: 1; gap: 40px; }
-        .menu-col { flex: 1; padding: 10px; }
+        .menu-col { flex: 1; padding: 10px; display: flex; flex-direction: column; }
         .menu-col h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-        #disease-library { list-style: none; padding: 0; max-height: 400px; overflow-y: auto; }
+        #disease-library { list-style: none; padding: 0; flex-grow: 1; overflow-y: auto; }
         #disease-library li {
             padding: 10px;
             border: 1px solid transparent;
@@ -60,7 +62,7 @@
         }
         #disease-library li:hover { background-color: var(--button-hover-color); }
         #disease-library li.selected { border-color: var(--primary-color); background-color: #3e3e42; }
-        #editor-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        #editor-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .form-group { display: flex; flex-direction: column; }
         label { margin-bottom: 5px; font-size: 0.9em; color: #ccc; }
         input[type="text"], input[type="number"] {
@@ -85,7 +87,7 @@
         button:hover { background-color: var(--button-hover-color); }
         #start-sim-btn { background-color: var(--primary-color); color: var(--bg-color); font-weight: bold; flex-grow: 1; }
         #delete-profile-btn { background-color: #8b2828; }
-        #error-message { color: var(--error-color); margin-top: 15px; min-height: 20px; }
+        #error-message { color: var(--error-color); margin-top: 15px; min-height: 20px; text-align: center;}
 
         /* --- Simulation View --- */
         #simulation-view {
@@ -106,16 +108,17 @@
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stats-item { font-size: 0.9em; }
         .key-item { display: flex; align-items: center; margin-bottom: 4px; font-size: 0.9em; }
-        .key-color { width: 15px; height: 15px; margin-right: 8px; }
-        #commentary { font-style: italic; color: #aaa; margin-bottom: 15px; }
-        .chart-container { position: relative; height: 150px; width: 100%; }
-        #menu-btn { margin-top: auto; }
+        .key-color { width: 15px; height: 15px; margin-right: 8px; border-radius: 2px; }
+        #commentary { font-style: italic; color: #aaa; margin-bottom: 15px; min-height: 50px;}
+        .chart-container { position: relative; height: 150px; width: 100%; margin-top: auto;}
+        #menu-btn { margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div class="main-container">
 
+        <!-- ==================== MENU VIEW ==================== -->
         <div id="menu-view">
             <header class="menu-header"><h1>Disease & Vaccine Simulator</h1></header>
             <div class="menu-content">
@@ -139,7 +142,7 @@
                         <h3 style="grid-column: 1 / -1; margin-top: 15px;">Vaccine & Campaign</h3>
                         <div class="form-group"><label for="vaccine_efficacy">Efficacy (0-1)</label><input type="number" step="0.01" id="vaccine_efficacy"></div>
                         <div class="form-group"><label for="vaccine_mortality_rate">Vax Mortality</label><input type="number" step="0.000001" id="vaccine_mortality_rate"></div>
-                        <div class.form-group><label for="vaccine_long_term_effect_rate">Vax Long-Term</label><input type="number" step="0.000001" id="vaccine_long_term_effect_rate"></div>
+                        <div class="form-group"><label for="vaccine_long_term_effect_rate">Vax Long-Term</label><input type="number" step="0.000001" id="vaccine_long_term_effect_rate"></div>
                         <div class="form-group"><label for="initial_vax_rate">Initial Vax (0-1)</label><input type="number" step="0.01" id="initial_vax_rate"></div>
                         <div class="form-group"><label for="daily_vax_rate">Daily Vax Rate</label><input type="number" step="1" id="daily_vax_rate"></div>
                     </form>
@@ -147,12 +150,13 @@
                         <button id="save-profile-btn">Save Profile</button>
                         <button id="delete-profile-btn">Delete Profile</button>
                     </div>
-                    <div id="error-message"></div>
-                    <button id="start-sim-btn" style="width: 100%; margin-top: 20px;">Start Simulation</button>
+                     <div id="error-message"></div>
+                    <button id="start-sim-btn" style="width: 100%; margin-top: auto;">Start Simulation</button>
                 </div>
             </div>
         </div>
 
+        <!-- ==================== SIMULATION VIEW ==================== -->
         <div id="simulation-view">
             <canvas id="simulation-canvas"></canvas>
             <div id="ui-panel">
@@ -167,7 +171,7 @@
                 <h3>Vaccine Outcomes</h3>
                 <div class="stats-grid">
                     <div class="stats-item" id="ui-vax-deaths">Fatalities: 0</div>
-                    <div class.stats-item id="ui-vax-long-term">Long-Term: 0</div>
+                    <div class="stats-item" id="ui-vax-long-term">Long-Term: 0</div>
                 </div>
                 <h3>Commentary</h3>
                 <p id="commentary">Simulation has not started.</p>
@@ -179,80 +183,42 @@
         </div>
     </div>
 
+    <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Embedded JavaScript Application -->
     <script>
     const App = {
         // =============== CONFIG & STATE ===============
-        // Elements
         els: {},
-        // Config
-        POPULATION_SIZE: 400,
-        AGENT_RADIUS: 5,
-        TICKS_PER_DAY: 60,
-        AVG_CONTACTS_PER_DAY: 8,
-        // State
-        appState: 'MENU',
-        population: [],
-        diseaseParams: {},
-        allDiseases: {},
-        selectedDiseaseName: null,
-        simulationRunning: false,
-        history: [],
-        ticks: 0,
-        // Stats
-        stats: {},
-        peakInfected: 0,
-        peakReached: false,
-        totalSickDays: 0,
-        vaxDeaths: 0,
-        vaxLongTerm: 0,
-        vaccinationCounter: 0,
-        // Chart
-        chart: null,
+        POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
+        appState: 'MENU', population: [], diseaseParams: {}, allDiseases: {},
+        selectedDiseaseName: null, simulationRunning: false, history: [],
+        ticks: 0, stats: {}, peakInfected: 0, peakReached: false,
+        totalSickDays: 0, vaxDeaths: 0, vaxLongTerm: 0, vaccinationCounter: 0, chart: null,
 
         // =============== INITIALIZATION ===============
         init() {
-            // Cache all DOM elements
-            this.els = {
-                menuView: document.getElementById('menu-view'),
-                simView: document.getElementById('simulation-view'),
-                simCanvas: document.getElementById('simulation-canvas'),
-                diseaseLibrary: document.getElementById('disease-library'),
-                editorForm: document.getElementById('editor-form'),
-                errorMessage: document.getElementById('error-message'),
-                uiPanel: {
-                    name: document.getElementById('ui-disease-name'),
-                    days: document.getElementById('ui-elapsed-days'),
-                    rt: document.getElementById('ui-rt'),
-                    sickDays: document.getElementById('ui-total-sick-days'),
-                    key: document.getElementById('ui-key'),
-                    vaxDeaths: document.getElementById('ui-vax-deaths'),
-                    vaxLongTerm: document.getElementById('ui-vax-long-term'),
-                    commentary: document.getElementById('commentary'),
-                    historyChart: document.getElementById('history-chart').getContext('2d'),
-                },
-                buttons: {
-                    start: document.getElementById('start-sim-btn'),
-                    save: document.getElementById('save-profile-btn'),
-                    delete: document.getElementById('delete-profile-btn'),
-                    toMenu: document.getElementById('menu-btn'),
-                },
+            this.els = { // Cache all DOM elements
+                menuView: document.getElementById('menu-view'), simView: document.getElementById('simulation-view'),
+                simCanvas: document.getElementById('simulation-canvas'), diseaseLibrary: document.getElementById('disease-library'),
+                editorForm: document.getElementById('editor-form'), errorMessage: document.getElementById('error-message'),
+                uiPanel: { name: document.getElementById('ui-disease-name'), days: document.getElementById('ui-elapsed-days'),
+                    rt: document.getElementById('ui-rt'), sickDays: document.getElementById('ui-total-sick-days'),
+                    key: document.getElementById('ui-key'), vaxDeaths: document.getElementById('ui-vax-deaths'),
+                    vaxLongTerm: document.getElementById('ui-vax-long-term'), commentary: document.getElementById('commentary'),
+                    historyChart: document.getElementById('history-chart').getContext('2d'), },
+                buttons: { start: document.getElementById('start-sim-btn'), save: document.getElementById('save-profile-btn'),
+                    delete: document.getElementById('delete-profile-btn'), toMenu: document.getElementById('menu-btn'), },
                 inputs: {}
             };
-            // Collect all form inputs
             const inputs = this.els.editorForm.querySelectorAll('input');
             inputs.forEach(input => { this.els.inputs[input.id] = input; });
             
             this.ctx = this.els.simCanvas.getContext('2d');
-            this.resizeCanvas();
-            
-            this.loadProfiles();
-            this.populateLibrary();
-            this.addEventListeners();
-            this.updateView();
+            this.resizeCanvas(); this.loadProfiles(); this.populateLibrary();
+            this.addEventListeners(); this.updateView();
         },
-        
         addEventListeners() {
             window.addEventListener('resize', () => this.resizeCanvas());
             this.els.buttons.start.addEventListener('click', () => this.startSimulation());
@@ -264,46 +230,37 @@
         // =============== DATA & PROFILE MANAGEMENT ===============
         loadProfiles() {
             const BASE_PRESETS = {"Influenza":{"R0":"1.3","incubation_days":"2","infectious_days":"5","fatality_rate":"0.001","long_term_effect_rate":"0.0","vaccine_efficacy":"0.5","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.000001","initial_vax_rate":"0.4","daily_vax_rate":"2"},"COVID-19":{"R0":"2.5","incubation_days":"5","infectious_days":"7","fatality_rate":"0.01","long_term_effect_rate":"0.10","vaccine_efficacy":"0.9","vaccine_mortality_rate":"0.000002","vaccine_long_term_effect_rate":"0.00005","initial_vax_rate":"0.0","daily_vax_rate":"8"},"Ebola":{"R0":"2.0","incubation_days":"8","infectious_days":"6","fatality_rate":"0.5","long_term_effect_rate":"0.05","vaccine_efficacy":"0.97","vaccine_mortality_rate":"0.00001","vaccine_long_term_effect_rate":"0.0001","initial_vax_rate":"0.0","daily_vax_rate":"1"},"Measles":{"R0":"15","incubation_days":"10","infectious_days":"8","fatality_rate":"0.002","long_term_effect_rate":"0.001","vaccine_efficacy":"0.97","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.8","daily_vax_rate":"0"},"Chickenpox":{"R0":"11","incubation_days":"14","infectious_days":"7","fatality_rate":"0.0001","long_term_effect_rate":"0.0","vaccine_efficacy":"0.9","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.7","daily_vax_rate":"0"},"Mumps":{"R0":"5","incubation_days":"18","infectious_days":"7","fatality_rate":"0.0001","long_term_effect_rate":"0.01","vaccine_efficacy":"0.88","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.8","daily_vax_rate":"0"},"Pertussis":{"R0":"15","incubation_days":"9","infectious_days":"21","fatality_rate":"0.005","long_term_effect_rate":"0.0","vaccine_efficacy":"0.85","vaccine_mortality_rate":"0.000001","vaccine_long_term_effect_rate":"0.0","initial_vax_rate":"0.6","daily_vax_rate":"1"},"Polio":{"R0":"6","incubation_days":"10","infectious_days":"14","fatality_rate":"0.005","long_term_effect_rate":"0.01","vaccine_efficacy":"0.99","vaccine_mortality_rate":"0.0000004","vaccine_long_term_effect_rate":"0.0000004","initial_vax_rate":"0.5","daily_vax_rate":"5"},"Smallpox":{"R0":"6","incubation_days":"12","infectious_days":"9","fatality_rate":"0.3","long_term_effect_rate":"0.05","vaccine_efficacy":"0.95","vaccine_mortality_rate":"0.00001","vaccine_long_term_effect_rate":"0.0001","initial_vax_rate":"0.0","daily_vax_rate":"10"}};
-            this.allDiseases = BASE_PRESETS;
+            this.allDiseases = {...BASE_PRESETS}; // Use spread to create a copy
             try {
                 const custom = JSON.parse(localStorage.getItem('diseaseProfiles'));
-                if(custom) {
-                    this.allDiseases = {...this.allDiseases, ...custom};
-                }
+                if(custom) this.allDiseases = {...this.allDiseases, ...custom};
             } catch (e) { console.warn("Could not load custom profiles.", e); }
+            window.BASE_PRESETS = BASE_PRESETS; // Make it global for easy access
         },
         saveProfile() {
             const name = this.els.inputs.name.value.trim();
-            if (!name) {
-                this.showError("Disease Name cannot be empty.");
-                return;
-            }
+            if (!name) { this.showError("Disease Name cannot be empty."); return; }
             const profile = {};
             for (const key in this.els.inputs) {
                 if(key !== 'name') profile[key] = this.els.inputs[key].value;
             }
             this.allDiseases[name] = profile;
-            
             const customToSave = {};
             for(const diseaseName in this.allDiseases){
-                if(!BASE_PRESETS.hasOwnProperty(diseaseName)){
-                    customToSave[diseaseName] = this.allDiseases[diseaseName];
-                }
+                if(!window.BASE_PRESETS.hasOwnProperty(diseaseName)) customToSave[diseaseName] = this.allDiseases[diseaseName];
             }
             localStorage.setItem('diseaseProfiles', JSON.stringify(customToSave));
             this.populateLibrary();
             this.showError(`${name} saved!`, false);
         },
         deleteProfile(){
-            if(this.selectedDiseaseName && !BASE_PRESETS.hasOwnProperty(this.selectedDiseaseName)){
+            if(this.selectedDiseaseName && !window.BASE_PRESETS.hasOwnProperty(this.selectedDiseaseName)){
                 delete this.allDiseases[this.selectedDiseaseName];
-                this.saveProfile(); // This effectively saves the removal
+                this.saveProfile();
                 this.populateLibrary();
                 this.showError(`${this.selectedDiseaseName} deleted.`, false);
                 this.selectedDiseaseName = null;
-            } else {
-                this.showError("Cannot delete a base preset.");
-            }
+            } else { this.showError("Cannot delete a base preset."); }
         },
 
         // =============== MENU UI ===============
@@ -324,13 +281,9 @@
             for (const key in this.els.inputs) {
                 this.els.inputs[key].value = profile[key] || '';
             }
-            this.els.inputs.name.value = name; // Set name separately
-            
-            // Highlight selected
-            this.els.diseaseLibrary.querySelectorAll('li').forEach(li => {
-                li.classList.toggle('selected', li.dataset.name === name);
-            });
-            this.showError(''); // Clear error on new selection
+            this.els.inputs.name.value = name;
+            this.els.diseaseLibrary.querySelectorAll('li').forEach(li => li.classList.toggle('selected', li.dataset.name === name));
+            this.showError('');
         },
         showError(message, isError=true) {
             this.els.errorMessage.textContent = message;
@@ -339,66 +292,71 @@
 
         // =============== SIMULATION CONTROL ===============
         startSimulation() {
+            this.showError(''); // Clear previous error
+            
             const params = {};
             for(const key in this.els.inputs){
-                params[key] = this.els.inputs[key].value;
+                params[key] = this.els.inputs[key].value.trim();
             }
 
-            // Validation
-            for(const key in params){
-                if(params[key].trim() === ''){
-                    this.showError(`Error: '${key}' field cannot be empty.`);
-                    return;
-                }
-            }
+            if (!params.name) { this.showError("Error: Disease Name cannot be empty."); return; }
+
+            const processedParams = { name: params.name };
             
-            this.diseaseParams = { name: params.name };
-            for(const key in params){
-                if(key !== 'name') this.diseaseParams[key] = parseFloat(params[key]);
+            // Validate each numeric field
+            for (const key in this.els.inputs) {
+                if (key === 'name') continue;
+                if (params[key] === '') { this.showError(`Error: '${this.els.inputs[key].labels[0].textContent}' cannot be empty.`); return; }
+                const valueNum = parseFloat(params[key]);
+                if (isNaN(valueNum)) { this.showError(`Error: '${this.els.inputs[key].labels[0].textContent}' must be a valid number.`); return; }
+                if (valueNum < 0) { this.showError(`Error: '${this.els.inputs[key].labels[0].textContent}' cannot be negative.`); return; }
+                processedParams[key] = valueNum;
             }
+
+            if (processedParams.infectious_days <= 0) { this.showError("Error: Infectious period must be > 0."); return; }
+            if (processedParams.vaccine_efficacy > 1) { this.showError("Error: Vax Efficacy must be <= 1.0."); return; }
+            if (processedParams.initial_vax_rate > 1) { this.showError("Error: Initial Vax Rate must be <= 1.0."); return; }
             
+            this.diseaseParams = processed_params;
             this.diseaseParams.transmission_prob = this.diseaseParams.R0 / (this.AVG_CONTACTS_PER_DAY * this.diseaseParams.infectious_days);
-            this.diseaseParams.incubation_ticks = this.diseaseParams.incubation_days * this.TICKS_PER_DAY;
-            this.disease_params.infectious_ticks = this.disease_params.infectious_days * this.TICKS_PER_DAY;
+            this.diseaseParams.incubation_ticks = Math.round(this.diseaseParams.incubation_days * this.TICKS_PER_DAY);
+            this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
             
-            // Reset state
-            this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
-            this.peakReached = false; this.history = [];
-            
-            // Create population
-            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
-            
-            // Initial vaccination
-            const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
-            this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
-
-            // Patient Zero
-            const patientZero = this.population.find(a => a.state === 'S');
-            if(patientZero){
-                patientZero.state = 'E';
-                patientZero.timer = this.diseaseParams.incubation_ticks;
-            }
-
-            // Go!
             this.appState = 'SIMULATION';
             this.updateView();
             this.simulationRunning = true;
-            requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+            this.resetSimulationState();
+            requestAnimationFrame((t) => this.gameLoop(t));
         },
         stopSimulation() {
             this.simulationRunning = false;
             this.appState = 'MENU';
             this.updateView();
         },
+        resetSimulationState() {
+            this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
+            this.peakReached = false; this.history = [];
+            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
+            
+            const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
+            this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
 
+            const patientZero = this.population.find(a => a.state === 'S');
+            if(patientZero){
+                patientZero.state = 'E';
+                patientZero.timer = this.diseaseParams.incubation_ticks;
+            }
+            this.updateStats();
+            this.history.push(this.stats.counts);
+            this.stats.commentary = "Simulation starting...";
+        },
+        
         // =============== CORE SIMULATION LOOP ===============
-        gameLoop(timestamp) {
+        gameLoop() {
             if (!this.simulationRunning) return;
-
             this.update();
             this.render();
-
-            requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+            requestAnimationFrame(() => this.gameLoop());
         },
         update() {
             this.ticks++;
@@ -429,9 +387,7 @@
                 const numToVaccinate = Math.floor(this.vaccinationCounter);
                 const susceptible = this.population.filter(a => a.state === 'S');
                 if(susceptible.length > 0) {
-                    for(let i=0; i < Math.min(numToVaccinate, susceptible.length); i++){
-                        this.vaccinateAgent(susceptible[i]);
-                    }
+                    for(let i=0; i < Math.min(numToVaccinate, susceptible.length); i++) this.vaccinateAgent(susceptible[i]);
                 }
                 this.vaccinationCounter -= numToVaccinate;
             }
@@ -448,10 +404,7 @@
                         const distSq = (infector.x - target.x)**2 + (infector.y - target.y)**2;
                         if (distSq < (this.AGENT_RADIUS * 4)**2) {
                             const prob = target.state === 'S' ? this.diseaseParams.transmission_prob : vax_prob;
-                            if (Math.random() < prob) {
-                                target.state = 'E';
-                                target.timer = this.diseaseParams.incubation_ticks;
-                            }
+                            if (Math.random() < prob) { target.state = 'E'; target.timer = this.diseaseParams.incubation_ticks; }
                         }
                     }
                 }
@@ -486,7 +439,6 @@
             this.els.uiPanel.vaxDeaths.textContent = `Fatalities: ${this.vaxDeaths}`;
             this.els.uiPanel.vaxLongTerm.textContent = `Long-Term: ${this.vaxLongTerm}`;
             this.els.uiPanel.commentary.textContent = this.stats.commentary;
-            
             let keyHTML = '';
             for(const state in this.stats.counts) {
                 const count = this.stats.counts[state];
@@ -495,26 +447,18 @@
                 keyHTML += `<div class="key-item"><div class="key-color" style="background-color:${color};"></div> ${STATE_NAMES[state]}: ${count} (${percent}%)</div>`;
             }
             this.els.uiPanel.key.innerHTML = keyHTML;
-
-            // Update chart
-            if (this.ticks % this.TICKS_PER_DAY === 0) {
-                this.history.push(this.stats.counts);
-                this.updateChart();
-            }
+            if (this.ticks % this.TICKS_PER_DAY === 0) this.updateChart();
         },
         initChart() {
             if (this.chart) this.chart.destroy();
             const datasets = Object.keys(AGENT_COLORS).map(key => ({
-                label: STATE_NAMES[key],
-                data: [],
-                backgroundColor: AGENT_COLORS[key],
-                borderColor: AGENT_COLORS[key],
-                fill: true,
-                pointRadius: 0
+                label: STATE_NAMES[key], data: [], backgroundColor: AGENT_COLORS[key],
+                borderColor: AGENT_COLORS[key], fill: true, pointRadius: 0
             }));
             this.chart = new Chart(this.els.uiPanel.historyChart, {
                 type: 'line', data: { labels: [], datasets: datasets },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+                options: { animation: { duration: 250 }, responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
             });
         },
         updateChart() {
@@ -523,26 +467,22 @@
                 const key = Object.keys(STATE_NAMES).find(k => STATE_NAMES[k] === dataset.label);
                 dataset.data = this.history.map(h => h[key] || 0);
             });
-            this.chart.update();
+            this.chart.update('none');
         },
         updateStats() {
             const previous_counts = this.stats.counts || {};
             const counts = { S: 0, V: 0, E: 0, I: 0, R_FULL: 0, R_LONG: 0, D: 0 };
             this.population.forEach(a => { counts[a.state]++; });
-            
             const effectiveSusceptible = counts.S + (counts.V * (1 - this.diseaseParams.vaccine_efficacy));
             const Rt = this.diseaseParams.R0 * (effectiveSusceptible / this.POPULATION_SIZE);
             this.totalSickDays += counts.I / this.TICKS_PER_DAY;
-
             const commentary = this.getCommentary(counts, previous_counts);
-
             this.stats = { counts, elapsed_days: Math.floor(this.ticks / this.TICKS_PER_DAY), Rt, commentary };
+            if (this.ticks > 0 && this.ticks % this.TICKS_PER_DAY === 0) this.history.push(this.stats.counts);
         },
         getCommentary(current, prev){
-            const current_I = current.I || 0;
-            const prev_I = prev.I || 0;
+            const current_I = current.I || 0; const prev_I = prev.I || 0;
             if(current_I > this.peakInfected) this.peakInfected = current_I;
-            
             if (current_I > 0 && prev_I === 0) return "The outbreak has begun.";
             if (current_I > prev_I && !this.peakReached) return `Exponential growth phase. R(t) is ${this.stats.Rt.toFixed(2)}.`;
             if (current_I < prev_I && !this.peakReached && current_I > 0) {
@@ -561,14 +501,10 @@
 
     class Agent {
         constructor(state, width, height) {
-            this.x = Math.random() * width;
-            this.y = Math.random() * height;
-            this.radius = App.AGENT_RADIUS;
-            this.state = state; this.timer = 0;
-            const angle = Math.random() * 2 * Math.PI;
-            this.speed = 0.5 + Math.random();
-            this.dx = Math.cos(angle) * this.speed;
-            this.dy = Math.sin(angle) * this.speed;
+            this.x = Math.random() * width; this.y = Math.random() * height;
+            this.radius = App.AGENT_RADIUS; this.state = state; this.timer = 0;
+            const angle = Math.random() * 2 * Math.PI; this.speed = 0.5 + Math.random();
+            this.dx = Math.cos(angle) * this.speed; this.dy = Math.sin(angle) * this.speed;
         }
         move(width, height) {
             if (this.state === 'D') return;
