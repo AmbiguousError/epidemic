@@ -44,15 +44,15 @@
             overflow: hidden;
         }
         
-        /* FIX: Robust view switching system */
-        body.view-menu #simulation-view { display: none; }
-        body.view-simulation #menu-view { display: none; }
+        .view { display: none; }
+        body.view-menu #menu-view { display: flex; }
+        body.view-simulation #simulation-view { display: flex; }
+        body.view-summary #summary-view { display: flex; }
 
         /* --- Menu View --- */
         #menu-view {
             width: 100%;
             padding: 20px 40px;
-            display: flex;
             flex-direction: column;
         }
         .menu-header { text-align: center; color: var(--primary-color); }
@@ -123,7 +123,6 @@
         #simulation-view { 
             width: 100%; 
             height: 100%;
-            display: flex;
         }
         #simulation-canvas { background-color: #0a0a0b; }
         #ui-panel {
@@ -142,14 +141,50 @@
         #commentary { font-style: italic; color: #aaa; margin-bottom: 15px; min-height: 50px;}
         .chart-container { position: relative; height: 150px; width: 100%; margin-top: auto;}
         #menu-btn { margin-top: 15px; }
+
+        /* --- Summary View --- */
+        #summary-view {
+            width: 100%;
+            padding: 40px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        #summary-panel {
+            background-color: #2d2d30;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+        }
+        #summary-title {
+            color: var(--primary-color);
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        #summary-disease-name {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+        #summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px 30px;
+            text-align: left;
+            margin-bottom: 30px;
+        }
+        #summary-grid .label { color: #aaa; }
+        #summary-grid .value { font-size: 1.2em; font-weight: 500;}
     </style>
 </head>
-<body class="view-menu"> <!-- Start in menu view -->
+<body class="view-menu">
 
     <div class="main-container">
 
         <!-- ==================== MENU VIEW ==================== -->
-        <div id="menu-view">
+        <div id="menu-view" class="view">
             <header class="menu-header"><h1>Disease & Vaccine Simulator</h1></header>
             <div class="menu-content">
                 <div class="menu-col">
@@ -160,10 +195,7 @@
                     <h3>Profile Editor</h3>
                     <div id="editor-form-wrapper">
                         <form id="editor-form" onsubmit="return false;">
-                            <div class="form-group full-width">
-                                <label for="name">Disease Name</label>
-                                <input type="text" id="name">
-                            </div>
+                            <div class="form-group full-width"><label for="name">Disease Name</label><input type="text" id="name"></div>
                             <div class="form-section">
                                 <h3>Disease Parameters</h3>
                                 <div class="form-grid">
@@ -187,10 +219,7 @@
                         </form>
                     </div>
                     <div id="menu-actions-footer">
-                        <div class="button-row">
-                             <button id="save-profile-btn">Save Profile</button>
-                             <button id="delete-profile-btn">Delete Profile</button>
-                        </div>
+                        <div class="button-row"><button id="save-profile-btn">Save Profile</button><button id="delete-profile-btn">Delete Profile</button></div>
                         <div id="error-message"></div>
                         <button id="start-sim-btn">Start Simulation</button>
                     </div>
@@ -199,7 +228,7 @@
         </div>
 
         <!-- ==================== SIMULATION VIEW ==================== -->
-        <div id="simulation-view" class="hidden">
+        <div id="simulation-view" class="view">
             <canvas id="simulation-canvas"></canvas>
             <div id="ui-panel">
                 <h2>Live Analysis</h2>
@@ -217,10 +246,18 @@
                 </div>
                 <h3>Commentary</h3>
                 <p id="commentary">Simulation has not started.</p>
-                <div class="chart-container">
-                    <canvas id="history-chart"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="history-chart"></canvas></div>
                 <button id="menu-btn">Back to Menu</button>
+            </div>
+        </div>
+        
+        <!-- ==================== SUMMARY VIEW ==================== -->
+        <div id="summary-view" class="view">
+            <div id="summary-panel">
+                <h2 id="summary-title">Simulation Complete</h2>
+                <h3 id="summary-disease-name">Disease Name</h3>
+                <div id="summary-grid"></div>
+                <button id="summary-menu-btn">Return to Menu</button>
             </div>
         </div>
     </div>
@@ -232,8 +269,7 @@
     <script>
     const App = {
         // =============== CONFIG & STATE ===============
-        els: {},
-        POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
+        els: {}, POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
         appState: 'MENU', population: [], diseaseParams: {}, allDiseases: {},
         selectedDiseaseName: null, simulationRunning: false, history: [],
         ticks: 0, stats: {}, peakInfected: 0, peakReached: false,
@@ -242,24 +278,19 @@
         // =============== INITIALIZATION ===============
         init() {
             this.els = {
-                menuView: document.getElementById('menu-view'), simView: document.getElementById('simulation-view'),
+                body: document.body,
+                menuView: document.getElementById('menu-view'), simView: document.getElementById('simulation-view'), summaryView: document.getElementById('summary-view'),
                 simCanvas: document.getElementById('simulation-canvas'), diseaseLibrary: document.getElementById('disease-library'),
                 editorForm: document.getElementById('editor-form'), errorMessage: document.getElementById('error-message'),
-                uiPanel: { name: document.getElementById('ui-disease-name'), days: document.getElementById('ui-elapsed-days'),
-                    rt: document.getElementById('ui-rt'), sickDays: document.getElementById('ui-total-sick-days'),
-                    key: document.getElementById('ui-key'), vaxDeaths: document.getElementById('ui-vax-deaths'),
-                    vaxLongTerm: document.getElementById('ui-vax-long-term'), commentary: document.getElementById('commentary'),
-                    historyChart: document.getElementById('history-chart').getContext('2d'), },
-                buttons: { start: document.getElementById('start-sim-btn'), save: document.getElementById('save-profile-btn'),
-                    delete: document.getElementById('delete-profile-btn'), toMenu: document.getElementById('menu-btn'), },
+                uiPanel: { name: document.getElementById('ui-disease-name'), days: document.getElementById('ui-elapsed-days'), rt: document.getElementById('ui-rt'), sickDays: document.getElementById('ui-total-sick-days'), key: document.getElementById('ui-key'), vaxDeaths: document.getElementById('ui-vax-deaths'), vaxLongTerm: document.getElementById('ui-vax-long-term'), commentary: document.getElementById('commentary'), historyChart: document.getElementById('history-chart').getContext('2d'), },
+                summaryPanel: { name: document.getElementById('summary-disease-name'), grid: document.getElementById('summary-grid'), },
+                buttons: { start: document.getElementById('start-sim-btn'), save: document.getElementById('save-profile-btn'), delete: document.getElementById('delete-profile-btn'), toMenu: document.getElementById('menu-btn'), summaryToMenu: document.getElementById('summary-menu-btn'), },
                 inputs: {}
             };
             const inputs = this.els.editorForm.querySelectorAll('input');
             inputs.forEach(input => { this.els.inputs[input.id] = input; });
-            
             this.ctx = this.els.simCanvas.getContext('2d');
-            this.loadProfiles(); this.populateLibrary();
-            this.addEventListeners(); this.updateView();
+            this.loadProfiles(); this.populateLibrary(); this.addEventListeners(); this.updateView();
         },
         addEventListeners() {
             window.addEventListener('resize', () => this.resizeCanvas());
@@ -267,6 +298,7 @@
             this.els.buttons.save.addEventListener('click', () => this.saveProfile());
             this.els.buttons.delete.addEventListener('click', () => this.deleteProfile());
             this.els.buttons.toMenu.addEventListener('click', () => this.stopSimulation());
+            this.els.buttons.summaryToMenu.addEventListener('click', () => this.stopSimulation());
         },
 
         // =============== DATA & PROFILE MANAGEMENT ===============
@@ -283,14 +315,10 @@
             const name = this.els.inputs.name.value.trim();
             if (!name) { this.showError("Disease Name cannot be empty."); return; }
             const profile = {};
-            for (const key in this.els.inputs) {
-                if(key !== 'name') profile[key] = this.els.inputs[key].value;
-            }
+            for (const key in this.els.inputs) if(key !== 'name') profile[key] = this.els.inputs[key].value;
             this.allDiseases[name] = profile;
             const customToSave = {};
-            for(const diseaseName in this.allDiseases){
-                if(!window.BASE_PRESETS.hasOwnProperty(diseaseName)) customToSave[diseaseName] = this.allDiseases[diseaseName];
-            }
+            for(const diseaseName in this.allDiseases) if(!window.BASE_PRESETS.hasOwnProperty(diseaseName)) customToSave[diseaseName] = this.allDiseases[diseaseName];
             localStorage.setItem('diseaseProfiles', JSON.stringify(customToSave));
             this.populateLibrary();
             this.showError(`${name} saved!`, false);
@@ -298,8 +326,7 @@
         deleteProfile(){
             if(this.selectedDiseaseName && !window.BASE_PRESETS.hasOwnProperty(this.selectedDiseaseName)){
                 delete this.allDiseases[this.selectedDiseaseName];
-                this.saveProfile();
-                this.populateLibrary();
+                this.saveProfile(); this.populateLibrary();
                 this.showError(`${this.selectedDiseaseName} deleted.`, false);
                 this.selectedDiseaseName = null;
             } else { this.showError("Cannot delete a base preset."); }
@@ -311,8 +338,7 @@
             const names = Object.keys(this.allDiseases).sort();
             names.forEach(name => {
                 const li = document.createElement('li');
-                li.textContent = name;
-                li.dataset.name = name;
+                li.textContent = name; li.dataset.name = name;
                 li.addEventListener('click', () => this.selectProfile(name));
                 this.els.diseaseLibrary.appendChild(li);
             });
@@ -320,9 +346,7 @@
         selectProfile(name) {
             this.selectedDiseaseName = name;
             const profile = this.allDiseases[name];
-            for (const key in this.els.inputs) {
-                this.els.inputs[key].value = profile[key] || '';
-            }
+            for (const key in this.els.inputs) this.els.inputs[key].value = profile[key] || '';
             this.els.inputs.name.value = name;
             this.els.diseaseLibrary.querySelectorAll('li').forEach(li => li.classList.toggle('selected', li.dataset.name === name));
             this.showError('');
@@ -335,30 +359,19 @@
         // =============== SIMULATION CONTROL ===============
         startSimulation() {
             this.showError(''); 
-            
-            const params = {};
-            for(const key in this.els.inputs){
-                params[key] = this.els.inputs[key].value.trim();
-            }
-
+            const params = {}, processedParams = {};
+            for(const key in this.els.inputs) params[key] = this.els.inputs[key].value.trim();
             if (!params.name) { this.showError("Error: Disease Name cannot be empty."); return; }
-
-            const processedParams = { name: params.name };
-            
+            processedParams.name = params.name;
             for (const key in this.els.inputs) {
                 if (key === 'name') continue;
-                
-                const inputElement = this.els.inputs[key];
-                const labelElement = document.querySelector(`label[for="${key}"]`);
-                const labelText = labelElement ? labelElement.textContent : key;
-
+                const labelText = document.querySelector(`label[for="${key}"]`)?.textContent || key;
                 if (params[key] === '') { this.showError(`Error: '${labelText}' cannot be empty.`); return; }
                 const valueNum = parseFloat(params[key]);
                 if (isNaN(valueNum)) { this.showError(`Error: '${labelText}' must be a valid number.`); return; }
                 if (valueNum < 0) { this.showError(`Error: '${labelText}' cannot be negative.`); return; }
                 processedParams[key] = valueNum;
             }
-
             if (processedParams.infectious_days <= 0) { this.showError("Error: Infectious period must be > 0."); return; }
             if (processedParams.vaccine_efficacy > 1) { this.showError("Error: Vax Efficacy must be <= 1.0."); return; }
             if (processedParams.initial_vax_rate > 1) { this.showError("Error: Initial Vax Rate must be <= 1.0."); return; }
@@ -371,30 +384,32 @@
             this.appState = 'SIMULATION';
             this.simulationRunning = true;
             this.updateView();
-            this.resetSimulationState();
-            requestAnimationFrame(() => this.gameLoop());
+            requestAnimationFrame(() => { this.resetSimulationState(); this.gameLoop(); });
         },
         stopSimulation() {
             this.simulationRunning = false;
             this.appState = 'MENU';
             this.updateView();
         },
+        endSimulation() {
+            this.simulationRunning = false;
+            this.appState = 'SUMMARY';
+            this.populateSummaryView();
+            this.updateView();
+        },
         resetSimulationState() {
             this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
             this.peakReached = false; this.history = [];
+            this.resizeCanvas();
             this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
-            
             const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
             this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
-
             const patientZero = this.population.find(a => a.state === 'S');
-            if(patientZero){
-                patientZero.state = 'E';
-                patientZero.timer = this.diseaseParams.incubation_ticks;
-            }
+            if(patientZero){ patientZero.state = 'E'; patientZero.timer = this.diseaseParams.incubation_ticks; }
             this.updateStats();
             this.history.push(this.stats.counts);
             this.stats.commentary = "Simulation starting...";
+            this.initChart();
         },
         
         // =============== CORE SIMULATION LOOP ===============
@@ -455,24 +470,12 @@
         
         // =============== UI & CANVAS & CHART ===============
         updateView() {
-            // FIX: Use body classes for robust view switching
-            if (this.appState === 'MENU') {
-                document.body.classList.add('view-menu');
-                document.body.classList.remove('view-simulation');
-            } else {
-                document.body.classList.add('view-simulation');
-                document.body.classList.remove('view-menu');
-                this.resizeCanvas();
-                this.initChart();
-            }
+            document.body.className = `view-${this.appState.toLowerCase()}`;
         },
         resizeCanvas() {
-            if (this.appState === 'SIMULATION') {
-                const simView = this.els.simView;
-                const panelWidth = this.els.uiPanel.offsetWidth;
-                this.els.simCanvas.width = simView.offsetWidth - panelWidth;
-                this.els.simCanvas.height = simView.offsetHeight;
-            }
+            const panelWidth = this.els.uiPanel.offsetWidth;
+            this.els.simCanvas.width = this.els.simView.offsetWidth - panelWidth;
+            this.els.simCanvas.height = this.els.simView.offsetHeight;
         },
         updateUI() {
             this.els.uiPanel.name.textContent = this.diseaseParams.name;
@@ -522,6 +525,7 @@
             const commentary = this.getCommentary(counts, previous_counts);
             this.stats = { counts, elapsed_days: Math.floor(this.ticks / this.TICKS_PER_DAY), Rt, commentary };
             if (this.ticks > 0 && this.ticks % this.TICKS_PER_DAY === 0) this.history.push(this.stats.counts);
+            if(commentary === "The epidemic has ended.") this.endSimulation();
         },
         getCommentary(current, prev){
             const current_I = current.I || 0; const prev_I = prev.I || 0;
@@ -534,6 +538,27 @@
             if(this.peakReached && current_I > 0) return "The outbreak is receding due to immunity and vaccinations.";
             if(current_I === 0 && current.E === 0 && this.ticks > 100) return `The epidemic has ended.`;
             return this.stats.commentary || "Simulation in progress...";
+        },
+        populateSummaryView() {
+            this.els.summaryPanel.name.textContent = this.diseaseParams.name;
+            const diseaseDeaths = this.stats.counts.D - this.vaxDeaths;
+            const diseaseLongTerm = this.stats.counts.R_LONG - this.vaxLongTerm;
+
+            const summaryData = {
+                "Total Duration": `${this.stats.elapsed_days} days`,
+                "Peak Infected (at once)": `${this.peakInfected} (${(this.peakInfected/this.POPULATION_SIZE*100).toFixed(1)}%)`,
+                "Total Sick Days": Math.floor(this.totalSickDays),
+                "Total Recovered": this.stats.counts.R_FULL + this.stats.counts.R_LONG,
+                "Disease Deaths": diseaseDeaths,
+                "Disease Long-Term Effects": diseaseLongTerm,
+                "Vaccine Deaths": this.vaxDeaths,
+                "Vaccine Long-Term Effects": this.vaxLongTerm,
+            };
+            let gridHTML = '';
+            for(const [label, value] of Object.entries(summaryData)) {
+                gridHTML += `<div><div class="label">${label}</div><div class="value">${value}</div></div>`;
+            }
+            this.els.summaryPanel.grid.innerHTML = gridHTML;
         }
     };
 
@@ -581,4 +606,3 @@
     </script>
 </body>
 </html>
-
