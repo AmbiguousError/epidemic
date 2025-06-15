@@ -121,17 +121,45 @@
         #ui-panel {
             width: 380px;
             flex-shrink: 0;
-            padding: 20px;
-            overflow-y: auto; 
             display: flex;
             flex-direction: column;
             background-color: #1e1e24;
         }
-        #ui-panel h2, #ui-panel h3 {
-            margin-bottom: 15px;
+        #ui-header {
+            padding: 15px 20px;
+            background-color: #2c2c34;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
         }
+        #ui-header h2 {
+            font-size: 1.2em;
+            margin: 0;
+        }
+        #return-to-setup-btn {
+            padding: 6px 12px;
+            font-size: 0.8em;
+            background-color: #555;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #return-to-setup-btn:hover {
+            background-color: #666;
+        }
+
+        .ui-content {
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        
+        #ui-panel h3 { margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -145,50 +173,44 @@
             border-radius: 6px;
         }
         .key-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 0.9em;
+            display: flex; align-items: center; margin-bottom: 8px; font-size: 0.9em;
         }
         .key-color {
-            width: 15px;
-            height: 15px;
-            margin-right: 10px;
-            border-radius: 4px;
-        }
-        #commentary-section h3 {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        #ai-badge {
-            font-size: 0.6em;
-            font-weight: 500;
-            background-color: var(--google-blue);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        #commentary {
-            font-style: italic;
-            color: #b0b0b0;
-            margin-bottom: 20px;
-            min-height: 60px;
-            border-left: 3px solid var(--google-blue);
-            padding: 10px;
-            background-color: rgba(66, 133, 244, 0.1);
-            border-radius: 4px;
+            width: 15px; height: 15px; margin-right: 10px; border-radius: 4px;
         }
         .chart-container {
-            position: relative;
-            height: 180px;
-            width: 100%;
-            margin-top: auto;
-            background-color: #2c2c34;
-            padding: 10px;
-            border-radius: 8px;
+            position: relative; height: 180px; width: 100%;
+            background-color: #2c2c34; padding: 10px; border-radius: 8px;
+            flex-shrink: 0;
+        }
+        #commentary-section {
+            margin-top: 15px; display: flex; flex-direction: column; flex-grow: 1; min-height: 150px;
+        }
+        #commentary-section h3 {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        #ai-badge {
+            font-size: 0.6em; font-weight: 500; background-color: var(--google-blue); color: white;
+            padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        #commentary-log {
+            flex-grow: 1; overflow-y: auto; background-color: #2c2c34;
+            padding: 10px; border-radius: 6px; font-size: 0.9em;
+        }
+        .comment-item {
+            margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #3e3e42;
+        }
+        .comment-item:last-child { border-bottom: none; margin-bottom: 0; }
+        .comment-item strong { color: var(--google-blue); }
+
+        #end-game-analysis-section {
+            display: none; /* Hidden by default */
+            margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);
+        }
+        #final-report-output {
+            margin-top: 15px; background-color: #2c2c34; padding: 10px;
+            border-radius: 6px; font-size: 0.9em; min-height: 100px;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -196,14 +218,11 @@
 
     <div class="main-container">
         
-        <!-- Setup View -->
         <div id="setup-view" class="view active">
             <h1>Epidemic Simulator Setup</h1>
             <div class="form-group" style="width: 100%; max-width: 400px; margin-bottom: 20px;">
                 <label for="virus-select">Select Virus Profile</label>
-                <select id="virus-select">
-                    <!-- Options will be populated by JavaScript -->
-                </select>
+                <select id="virus-select"></select>
             </div>
             <form id="setup-form">
                 <div class="form-section">
@@ -243,71 +262,104 @@
                         <label for="vax-daily">Daily Rate (people)</label>
                         <input type="number" id="vax-daily" step="1" min="0">
                     </div>
+                    <div class="form-group">
+                        <label for="vax-mortality">Mortality (per 100k doses)</label>
+                        <input type="number" id="vax-mortality" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="vax-longterm">Long-Term (per 100k doses)</label>
+                        <input type="number" id="vax-longterm" step="0.1" min="0">
+                    </div>
                 </div>
                 <button type="button" id="start-simulation-btn">Start Simulation</button>
             </form>
         </div>
 
-
-        <!-- Simulation View -->
         <div id="simulation-view" class="view">
             <canvas id="simulation-canvas"></canvas>
             <div id="ui-panel">
-                <h2>Live Analysis</h2>
-                <h3 id="ui-disease-name"></h3>
-                <div class="stats-grid">
-                    <div class="stats-item" id="ui-elapsed-days">Days: 0</div>
-                    <div class="stats-item" id="ui-rt">R(t): 0.00</div>
-                    <div class="stats-item" id="ui-total-sick-days">Sick Days: 0</div>
+                <div id="ui-header">
+                     <h2 id="ui-disease-name"></h2>
+                    <button id="return-to-setup-btn">Return to Setup</button>
                 </div>
-                <div id="ui-key"></div>
-                <h3>Vaccine Outcomes</h3>
-                <div class="stats-grid">
-                    <div class="stats-item" id="ui-vax-deaths">Fatalities: 0</div>
-                    <div class="stats-item" id="ui-vax-long-term">Long-Term: 0</div>
+                <div class="ui-content">
+                    <div class="stats-grid">
+                        <div class="stats-item" id="ui-elapsed-days">Days: 0</div>
+                        <div class="stats-item" id="ui-rt">R(t): 0.00</div>
+                        <div class="stats-item" id="ui-total-sick-days">Sick Days: 0</div>
+                    </div>
+                    <h3>Population Status</h3>
+                    <div id="ui-key"></div>
+                    <h3>Vaccine Outcomes</h3>
+                    <div class="stats-grid">
+                        <div class="stats-item" id="ui-vax-deaths">Fatalities: 0</div>
+                        <div class="stats-item" id="ui-vax-long-term">Long-Term: 0</div>
+                    </div>
+                    <div class="chart-container"><canvas id="history-chart"></canvas></div>
+                    <div id="commentary-section">
+                        <h3>Commentary <span id="ai-badge">Powered by Google AI</span></h3>
+                        <div id="commentary-log"></div>
+                    </div>
+                    <div id="end-game-analysis-section">
+                        <h3>Final Report</h3>
+                        <div class="form-group">
+                            <label for="specialist-select">Select Specialist</label>
+                            <select id="specialist-select">
+                                <option value="epidemiologist">Epidemiologist</option>
+                                <option value="economist">Economist</option>
+                                <option value="public_health_official">Public Health Official</option>
+                            </select>
+                        </div>
+                        <button type="button" id="generate-report-btn">Generate Report</button>
+                        <div id="final-report-output">Select a specialist and generate a report for a final analysis.</div>
+                    </div>
                 </div>
-                <div id="commentary-section">
-                    <h3>Commentary <span id="ai-badge">Powered by Google AI</span></h3>
-                    <p id="commentary">Initializing...</p>
-                </div>
-                <div class="chart-container"><canvas id="history-chart"></canvas></div>
             </div>
         </div>
     </div>
 
-    <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Embedded JavaScript Application -->
     <script>
     const App = {
-        // =============== CONFIG & STATE ===============
         els: {}, POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
         population: [], diseaseParams: {}, simulationRunning: false, history: [],
         ticks: 0, stats: { commentary: "" }, peakInfected: 0, peakReached: false,
         totalSickDays: 0, vaxDeaths: 0, vaxLongTerm: 0, vaccinationCounter: 0, chart: null,
-        lastAICommentaryDay: -1,
+        lastAICommentaryDay: -1, lastCommentText: null,
 
         diseaseProfiles: {
-            covid19: { name: "COVID-19", r0: 2.5, incubation: 5, infectious: 7, fatality: 1, longterm: 10, vax_efficacy: 90, vax_initial: 0, vax_daily: 8 },
-            influenza: { name: "Influenza", r0: 1.3, incubation: 2, infectious: 5, fatality: 0.1, longterm: 1, vax_efficacy: 50, vax_initial: 20, vax_daily: 10 },
-            measles: { name: "Measles", r0: 15, incubation: 12, infectious: 8, fatality: 0.1, longterm: 0.1, vax_efficacy: 97, vax_initial: 80, vax_daily: 1 },
-            smallpox: { name: "Smallpox", r0: 6, incubation: 12, infectious: 21, fatality: 30, longterm: 15, vax_efficacy: 95, vax_initial: 0, vax_daily: 5 },
-            ebola: { name: "Ebola", r0: 2, incubation: 8, infectious: 10, fatality: 50, longterm: 25, vax_efficacy: 97, vax_initial: 0, vax_daily: 2 },
-            commoncold: { name: "Common Cold", r0: 2.5, incubation: 2, infectious: 6, fatality: 0, longterm: 0, vax_efficacy: 0, vax_initial: 0, vax_daily: 0 },
-            necromortosis: { name: "Necro-Mortosis", r0: 4, incubation: 1, infectious: 1000, fatality: 100, longterm: 100, vax_efficacy: 10, vax_initial: 0, vax_daily: 1 },
-            custom: { name: "Custom", r0: 2.0, incubation: 7, infectious: 10, fatality: 0.5, longterm: 5, vax_efficacy: 80, vax_initial: 10, vax_daily: 5 }
+            covid19: { name: "COVID-19", r0: 2.5, incubation: 5, infectious: 7, fatality: 1, longterm: 10, vax_efficacy: 90, vax_initial: 0, vax_daily: 8, vax_mortality: 0.2, vax_longterm: 5 },
+            influenza: { name: "Influenza", r0: 1.3, incubation: 2, infectious: 5, fatality: 0.1, longterm: 1, vax_efficacy: 50, vax_initial: 20, vax_daily: 10, vax_mortality: 0.1, vax_longterm: 1 },
+            measles: { name: "Measles", r0: 15, incubation: 12, infectious: 8, fatality: 0.1, longterm: 0.1, vax_efficacy: 97, vax_initial: 80, vax_daily: 1, vax_mortality: 0.1, vax_longterm: 0.1 },
+            smallpox: { name: "Smallpox", r0: 6, incubation: 12, infectious: 21, fatality: 30, longterm: 15, vax_efficacy: 95, vax_initial: 0, vax_daily: 5, vax_mortality: 1, vax_longterm: 10 },
+            ebola: { name: "Ebola", r0: 2, incubation: 8, infectious: 10, fatality: 50, longterm: 25, vax_efficacy: 97, vax_initial: 0, vax_daily: 2, vax_mortality: 0.5, vax_longterm: 50 },
+            commoncold: { name: "Common Cold", r0: 2.5, incubation: 2, infectious: 6, fatality: 0, longterm: 0, vax_efficacy: 0, vax_initial: 0, vax_daily: 0, vax_mortality: 0, vax_longterm: 0 },
+            necromortosis: { name: "Necro-Mortosis", r0: 4, incubation: 1, infectious: 1000, fatality: 100, longterm: 100, vax_efficacy: 10, vax_initial: 0, vax_daily: 1, vax_mortality: 500, vax_longterm: 1000 },
+            custom: { name: "Custom", r0: 2.0, incubation: 7, infectious: 10, fatality: 0.5, longterm: 5, vax_efficacy: 80, vax_initial: 10, vax_daily: 5, vax_mortality: 0.2, vax_longterm: 5 }
         },
 
-        // =============== INITIALIZATION ===============
+        specialistPersonas: {
+            epidemiologist: `You are an epidemiologist. Analyze the following epidemic summary with a focus on disease dynamics. Key metrics to discuss are the effective reproduction number (R(t)), the peak number of infections, total individuals affected, and the impact of the vaccination strategy on curbing the spread. Provide a data-driven, clinical analysis.`,
+            economist: `You are an economist. Analyze the following epidemic summary focusing on its economic impact. Consider the total sick days as lost productivity (assume $200/day value), the cost of the vaccination program (assume $25 per dose administered), and the long-term effects on the workforce. Provide a concise financial summary.`,
+            public_health_official: `You are a public health official. Provide a balanced analysis of the epidemic's outcome for the general public. Discuss the human cost (fatalities and long-term effects), the success of public health interventions like vaccination, and provide clear recommendations for future preparedness based on this event.`
+        },
+
         init() {
-            // Cache DOM elements for both views
-            this.els = {
+            this.cacheDOMElements();
+            this.populateVirusDropdown();
+            this.setupEventListeners();
+            this.updateForm();
+        },
+        
+        cacheDOMElements() {
+             this.els = {
                 setupView: document.getElementById('setup-view'),
                 simView: document.getElementById('simulation-view'),
                 simCanvas: document.getElementById('simulation-canvas'),
                 virusSelect: document.getElementById('virus-select'),
                 startBtn: document.getElementById('start-simulation-btn'),
+                returnBtn: document.getElementById('return-to-setup-btn'),
                 form: {
                     r0: document.getElementById('r0'),
                     incubation: document.getElementById('incubation'),
@@ -316,55 +368,67 @@
                     longterm: document.getElementById('longterm'),
                     vax_efficacy: document.getElementById('vax-efficacy'),
                     vax_initial: document.getElementById('vax-initial'),
-                    vax_daily: document.getElementById('vax-daily')
+                    vax_daily: document.getElementById('vax-daily'),
+                    vax_mortality: document.getElementById('vax-mortality'),
+                    vax_longterm: document.getElementById('vax-longterm')
                 },
                 uiPanel: { 
                     container: document.getElementById('ui-panel'),
                     name: document.getElementById('ui-disease-name'), 
-                    days: document.getElementById('ui-elapsed-days'), 
+                    days: document.getElementById('ui-elapsed-days'),
                     rt: document.getElementById('ui-rt'), 
-                    sickDays: document.getElementById('ui-total-sick-days'), 
+                    sickDays: document.getElementById('ui-total-sick-days'),
                     key: document.getElementById('ui-key'), 
-                    vaxDeaths: document.getElementById('ui-vax-deaths'), 
+                    vaxDeaths: document.getElementById('ui-vax-deaths'),
                     vaxLongTerm: document.getElementById('ui-vax-long-term'), 
-                    commentary: document.getElementById('commentary'), 
+                    commentaryLog: document.getElementById('commentary-log'),
                     historyChart: document.getElementById('history-chart').getContext('2d'), 
                 },
+                endGame: {
+                    section: document.getElementById('end-game-analysis-section'),
+                    specialistSelect: document.getElementById('specialist-select'),
+                    generateBtn: document.getElementById('generate-report-btn'),
+                    output: document.getElementById('final-report-output')
+                }
             };
             this.ctx = this.els.simCanvas.getContext('2d');
-            
-            // Populate virus dropdown
-            for (const key in this.diseaseProfiles) {
+        },
+
+        populateVirusDropdown() {
+             for (const key in this.diseaseProfiles) {
                 const option = document.createElement('option');
                 option.value = key;
                 option.textContent = this.diseaseProfiles[key].name;
                 this.els.virusSelect.appendChild(option);
             }
+        },
 
-            // Setup event listeners for the landing page
+        setupEventListeners() {
             this.els.virusSelect.addEventListener('change', () => this.updateForm());
             this.els.startBtn.addEventListener('click', () => this.startSimulation());
+            this.els.returnBtn.addEventListener('click', () => this.returnToSetup());
             Object.values(this.els.form).forEach(input => input.addEventListener('input', () => this.els.virusSelect.value = 'custom'));
-
-            this.updateForm(); // Populate form with default profile
+            this.els.endGame.generateBtn.addEventListener('click', () => this.generateFinalReport());
             window.addEventListener('resize', () => this.resizeCanvas());
+        },
+        
+        returnToSetup() {
+            this.simulationRunning = false;
+            this.els.simView.classList.remove('active');
+            this.els.setupView.classList.add('active');
         },
 
         updateForm() {
             const profile = this.diseaseProfiles[this.els.virusSelect.value];
             if (!profile) return;
-            this.els.form.r0.value = profile.r0;
-            this.els.form.incubation.value = profile.incubation;
-            this.els.form.infectious.value = profile.infectious;
-            this.els.form.fatality.value = profile.fatality;
-            this.els.form.longterm.value = profile.longterm;
-            this.els.form.vax_efficacy.value = profile.vax_efficacy;
-            this.els.form.vax_initial.value = profile.vax_initial;
-            this.els.form.vax_daily.value = profile.vax_daily;
+            for (const key in profile) {
+                if (this.els.form[key]) {
+                    this.els.form[key].value = profile[key];
+                }
+            }
         },
 
         startSimulation() {
-            // Gather parameters from form
             const selectedProfileKey = this.els.virusSelect.value;
             const profileName = this.diseaseProfiles[selectedProfileKey].name;
             
@@ -376,41 +440,48 @@
                 fatality_rate: parseFloat(this.els.form.fatality.value) / 100,
                 long_term_effect_rate: parseFloat(this.els.form.longterm.value) / 100,
                 vaccine_efficacy: parseFloat(this.els.form.vax_efficacy.value) / 100,
-                vaccine_mortality_rate: 0.000002, // Kept constant for simplicity
-                vaccine_long_term_effect_rate: 0.00005, // Kept constant for simplicity
+                vaccine_mortality_rate: parseFloat(this.els.form.vax_mortality.value) / 100000,
+                vaccine_long_term_effect_rate: parseFloat(this.els.form.vax_longterm.value) / 100000,
                 initial_vax_rate: parseFloat(this.els.form.vax_initial.value) / 100,
                 daily_vax_rate: parseInt(this.els.form.vax_daily.value)
             };
             
-            // Calculate simulation-specific parameters
             this.diseaseParams.transmission_prob = this.diseaseParams.R0 / (this.AVG_CONTACTS_PER_DAY * this.diseaseParams.infectious_days);
             this.diseaseParams.incubation_ticks = Math.round(this.diseaseParams.incubation_days * this.TICKS_PER_DAY);
             this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
 
-            // Switch views
             this.els.setupView.classList.remove('active');
             this.els.simView.classList.add('active');
 
-            // Initialize and run the simulation
             requestAnimationFrame(() => { 
-                this.resetSimulationState();
                 this.resizeCanvas();
+                this.resetSimulationState();
                 this.simulationRunning = true;
                 this.gameLoop();
             });
         },
 
-        // =============== SIMULATION CONTROL ===============
         resetSimulationState() {
             this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
             this.lastAICommentaryDay = -1; 
             this.peakReached = false; 
             this.history = [];
+            this.lastCommentText = null;
+            this.els.uiPanel.commentaryLog.innerHTML = '';
+            this.els.endGame.section.style.display = 'none';
+            this.els.endGame.output.textContent = 'Select a specialist and generate a report for a final analysis.';
 
-            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
+            // FIX: Ensure canvas has dimensions before creating agents
+            const w = this.els.simCanvas.width;
+            const h = this.els.simCanvas.height;
+            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', w, h));
             
             const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
-            this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
+            // Ensure we don't try to vaccinate non-existent agents if population is small
+            const susceptiblePopulation = this.population.filter(a => a.state === 'S');
+            for(let i=0; i < Math.min(numToVax, susceptiblePopulation.length); i++){
+                this.vaccinateAgent(susceptiblePopulation[i]);
+            }
             
             const patientZero = this.population.find(a => a.state === 'S');
             if(patientZero){ 
@@ -418,19 +489,18 @@
                 patientZero.timer = this.diseaseParams.incubation_ticks; 
             }
             
-            this.stats.commentary = "Initializing simulation...";
             this.updateStats();
+            this.addCommentToLog("Initializing simulation...", 0);
             this.history.push(this.stats.counts);
             this.initChart();
         },
         
-        // =============== CORE SIMULATION LOOP ===============
         gameLoop() {
             if (!this.simulationRunning) return;
-            this.update();
-            this.render();
+            this.update(); this.render();
             requestAnimationFrame(() => this.gameLoop());
         },
+
         update() {
             this.ticks++;
             this.handleVaccinationCampaign();
@@ -441,6 +511,7 @@
             });
             this.updateStats();
         },
+
         render() {
             if (!this.ctx) return;
             this.ctx.clearRect(0, 0, this.els.simCanvas.width, this.els.simCanvas.height);
@@ -448,27 +519,25 @@
             this.updateUI();
         },
         
-        // =============== SIMULATION LOGIC ===============
         vaccinateAgent(agent) {
             if (agent.state !== 'S') return;
+            this.vaccinationCounter++;
             if (Math.random() < this.diseaseParams.vaccine_mortality_rate) { agent.state = 'D'; this.vaxDeaths++; } 
             else if (Math.random() < this.diseaseParams.vaccine_long_term_effect_rate) { agent.state = 'R_LONG'; agent.speed *= 0.4; this.vaxLongTerm++; }
             else { agent.state = 'V'; }
         },
+
         handleVaccinationCampaign() {
-            this.vaccinationCounter += this.diseaseParams.daily_vax_rate / this.TICKS_PER_DAY;
-            if (this.vaccinationCounter >= 1) {
-                const numToVaccinate = Math.floor(this.vaccinationCounter);
-                const susceptible = this.population.filter(a => a.state === 'S');
-                if(susceptible.length > 0) {
-                    for(let i=0; i < Math.min(numToVaccinate, susceptible.length); i++) {
-                         const agentToVax = susceptible[Math.floor(Math.random() * susceptible.length)];
-                         if(agentToVax) this.vaccinateAgent(agentToVax);
-                    }
-                }
-                this.vaccinationCounter -= numToVaccinate;
+            let numToVaccinateToday = this.diseaseParams.daily_vax_rate / this.TICKS_PER_DAY;
+            if (numToVaccinateToday < 1 && this.ticks % Math.round(1/numToVaccinateToday) !== 0) return;
+
+            const susceptible = this.population.filter(a => a.state === 'S');
+            if(susceptible.length > 0) {
+                 const agentToVax = susceptible[Math.floor(Math.random() * susceptible.length)];
+                 if(agentToVax) this.vaccinateAgent(agentToVax);
             }
         },
+
         handleInfections() {
             const infectious = this.population.filter(a => a.state === 'I');
             if(infectious.length === 0) return;
@@ -487,24 +556,22 @@
             }
         },
         
-        // =============== UI, CANVAS & CHART ===============
         resizeCanvas() {
             if (!this.els.simView.classList.contains('active')) return;
-            const panelWidth = this.els.uiPanel.container.offsetWidth;
             const container = document.querySelector('.main-container');
-            this.els.simCanvas.width = container.offsetWidth - panelWidth;
+            this.els.simCanvas.width = container.offsetWidth - this.els.uiPanel.container.offsetWidth;
             this.els.simCanvas.height = container.offsetHeight;
-            this.render();
+            if(this.simulationRunning) this.render();
         },
+
         updateUI() {
-            if (!this.stats.counts) return; // Guard against initial undefined state
+            if (!this.stats.counts) return;
             this.els.uiPanel.name.textContent = this.diseaseParams.name;
             this.els.uiPanel.days.textContent = `Days: ${this.stats.elapsed_days}`;
             this.els.uiPanel.rt.textContent = `R(t): ${this.stats.Rt.toFixed(2)}`;
             this.els.uiPanel.sickDays.textContent = `Sick Days: ${Math.floor(this.totalSickDays)}`;
             this.els.uiPanel.vaxDeaths.textContent = `Fatalities: ${this.vaxDeaths}`;
             this.els.uiPanel.vaxLongTerm.textContent = `Long-Term: ${this.vaxLongTerm}`;
-            this.els.uiPanel.commentary.textContent = this.stats.commentary;
             
             let keyHTML = '';
             for(const state in this.stats.counts) {
@@ -519,6 +586,7 @@
                 this.updateChart();
             }
         },
+
         initChart() {
             if (this.chart) this.chart.destroy();
             const datasets = Object.keys(AGENT_COLORS).map(key => ({
@@ -537,6 +605,7 @@
                 }
             });
         },
+
         updateChart() {
             this.chart.data.labels = this.history.map((_, i) => i);
             this.chart.data.datasets.forEach(dataset => {
@@ -545,6 +614,7 @@
             });
             this.chart.update('none');
         },
+
         updateStats() {
             const counts = { S: 0, V: 0, E: 0, I: 0, R_FULL: 0, R_LONG: 0, D: 0 };
             this.population.forEach(a => { counts[a.state]++; });
@@ -553,7 +623,7 @@
             this.totalSickDays += counts.I / this.TICKS_PER_DAY;
             if (counts.I > this.peakInfected) this.peakInfected = counts.I;
             if (counts.I < this.peakInfected && !this.peakReached && counts.I > 0) this.peakReached = true;
-            this.stats = { counts, elapsed_days: Math.floor(this.ticks / this.TICKS_PER_DAY), Rt, commentary: this.stats.commentary };
+            this.stats = { counts, elapsed_days: Math.floor(this.ticks / this.TICKS_PER_DAY), Rt }; 
             if (this.ticks > 0 && this.ticks % this.TICKS_PER_DAY === 0) {
                 this.history.push(this.stats.counts);
             }
@@ -563,39 +633,83 @@
             }
         },
 
-        // =============== GOOGLE AI INTEGRATION ===============
+        addCommentToLog(text, day) {
+            const logContainer = this.els.uiPanel.commentaryLog;
+            const commentEl = document.createElement('p');
+            commentEl.className = 'comment-item';
+            commentEl.innerHTML = `<strong>Day ${day}:</strong> ${text}`;
+            logContainer.appendChild(commentEl);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        },
+
         async getAIAssistedCommentary() {
-            const { Rt, counts, elapsed_days } = this.stats;
+            const { counts, elapsed_days } = this.stats;
             const current_I = counts.I || 0;
             const current_E = counts.E || 0;
+            let newCommentText = "";
+
             if (current_I === 0 && current_E === 0 && this.ticks > 100) {
-                this.stats.commentary = `The epidemic has ended after ${elapsed_days} days. Total fatalities: ${counts.D}.`;
+                newCommentText = `The epidemic has ended after ${elapsed_days} days. Review the final report below.`;
                 this.simulationRunning = false;
-                return;
+                this.els.endGame.section.style.display = 'block'; // Show final report section
+            } else {
+                newCommentText = this.getSimulatedAIResponseForLive();
             }
-            const prompt = this.generateAIPrompt();
-            this.stats.commentary = this.getSimulatedAIResponse();
+
+            if (newCommentText && this.lastCommentText !== newCommentText) {
+                this.addCommentToLog(newCommentText, elapsed_days);
+                this.lastCommentText = newCommentText;
+            }
         },
-        generateAIPrompt() {
-            const { Rt, counts, elapsed_days } = this.stats;
-            return `You are an epidemiologist analyzing a simulation. Day: ${elapsed_days}, R(t): ${Rt.toFixed(2)}, Peak Infected Reached: ${this.peakReached}. Stats: S:${counts.S}, I:${counts.I}, R:${counts.R_FULL + counts.R_LONG}, D:${counts.D}, V:${counts.V}. Based on this data, provide a brief, insightful commentary (1-2 sentences).`;
-        },
-        getSimulatedAIResponse() {
+
+        getSimulatedAIResponseForLive() {
             const { Rt, counts, elapsed_days } = this.stats;
             const infected_percent = (counts.I / this.POPULATION_SIZE) * 100;
-            if (elapsed_days > 1 && counts.I === 0 && counts.E === 0) return `The epidemic has concluded. The low number of initial infections and existing immunity prevented a wider outbreak.`;
-            if (this.peakReached) return `The outbreak is now receding. A combination of natural immunity and vaccinations has brought the R(t) to ${Rt.toFixed(2)}, successfully reducing new infections.`;
-            if (infected_percent > 15 && Rt > 1.5) return `The virus is spreading exponentially with an R(t) of ${Rt.toFixed(2)}. The high number of active cases (${counts.I}) suggests a critical growth phase.`;
-            if (counts.V > this.POPULATION_SIZE * 0.6 && Rt < 1.2) return `Vaccination efforts are proving highly effective. With over 60% of the population vaccinated, the virus's spread has been significantly curtailed.`;
-            if (Rt < 1 && counts.I > 0) return `The effective reproduction number has dropped below 1, a positive sign that the outbreak may soon peak. Current measures appear to be working.`;
-            if (elapsed_days > 0 && this.history.length > 1 && counts.I > (this.history[this.history.length-2]?.I || 0) ) return `Case numbers are rising. The current R(t) of ${Rt.toFixed(2)} indicates that each infected individual is, on average, spreading the virus to more than one person.`;
-            return "The situation is stable but requires ongoing monitoring as new cases continue to emerge at a slow rate.";
+            if (elapsed_days > 1 && counts.I === 0 && counts.E === 0) return `The outbreak was contained before it could spread widely.`;
+            if (this.peakReached) return `The outbreak is receding. Immunity and vaccinations have brought R(t) to ${Rt.toFixed(2)}, reducing new infections.`;
+            if (infected_percent > 15 && Rt > 1.5) return `The virus is spreading exponentially. The high R(t) of ${Rt.toFixed(2)} suggests a critical growth phase.`;
+            if (counts.V > this.POPULATION_SIZE * 0.6 && Rt < 1.2) return `Vaccination efforts are proving effective, significantly curtailing the virus's spread.`;
+            if (Rt < 1 && counts.I > 0) return `The effective reproduction number is below 1, a positive sign the outbreak may soon peak.`;
+            if (elapsed_days > 0 && this.history.length > 1 && counts.I > (this.history[this.history.length-2]?.I || 0) ) return `Case numbers are rising. R(t) of ${Rt.toFixed(2)} indicates sustained transmission.`;
+            return "The situation is stable as new cases emerge at a slow, controlled rate.";
+        },
+        
+        generateFinalReport() {
+            const specialist = this.els.endGame.specialistSelect.value;
+            const persona = this.specialistPersonas[specialist];
+            const finalStats = { ...this.stats, ...this.diseaseParams, peakInfected: this.peakInfected, totalSickDays: Math.floor(this.totalSickDays), totalVaccinated: Math.floor(this.vaccinationCounter) };
+            
+            let dataSummary = `
+            Final Data Summary:
+            - Disease: ${finalStats.name} (R0: ${finalStats.R0})
+            - Duration: ${finalStats.elapsed_days} days
+            - Peak Active Infections: ${finalStats.peakInfected}
+            - Total Fatalities (Disease): ${finalStats.counts.D - this.vaxDeaths}
+            - Total Recovered with Long-Term Effects: ${finalStats.counts.R_LONG - this.vaxLongTerm}
+            - Total Sick Days: ${finalStats.totalSickDays}
+            - Total Doses Administered: ${finalStats.totalVaccinated}
+            - Vaccine Fatalities: ${this.vaxDeaths}
+            - Vaccine Long-Term Effects: ${this.vaxLongTerm}
+            `;
+
+            // This simulates the AI response based on the persona and data
+            let report = `${persona}\n\n${dataSummary}\n\n--- AI ANALYSIS ---\n`;
+            if (specialist === 'epidemiologist') {
+                report += `The disease, with a base R0 of ${finalStats.R0}, spread rapidly before peaking at ${finalStats.peakInfected} cases. The vaccination campaign, achieving ${finalStats.totalVaccinated} doses, was critical in eventually suppressing transmission. However, the initial growth phase indicates a highly infectious pathogen that requires swift intervention.`;
+            } else if (specialist === 'economist') {
+                const lostProductivity = finalStats.totalSickDays * 200;
+                const vaxCost = finalStats.totalVaccinated * 25;
+                report += `The economic toll was substantial. An estimated ${lostProductivity.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} was lost in productivity due to ${finalStats.totalSickDays} sick days. The vaccination program cost approximately ${vaxCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}. The long-term effects on ${finalStats.counts.R_LONG} individuals will have further, unquantified economic consequences.`;
+            } else { // Public Health Official
+                 report += `While the epidemic was eventually controlled, the human cost was significant, with ${finalStats.counts.D} fatalities. The vaccination program was a success in preventing a worse outcome, demonstrating the value of rapid deployment. Our key takeaway is the need for earlier detection and intervention to minimize both loss of life and long-term public health burdens from events like this.`;
+            }
+            this.els.endGame.output.textContent = report;
         }
     };
 
-    // =============== JAVASCRIPT AGENT CLASS ===============
     const AGENT_COLORS = {S: '#8e9dff', V: '#c896ff', E: '#ffdd57', I: '#ff5252', R_FULL: '#5dd55d', R_LONG: '#008a00', D: '#666666'};
     const STATE_NAMES = {S: 'Susceptible', V: 'Vaccinated', E: 'Exposed', I: 'Infectious', R_FULL: 'Recovered (Full)', R_LONG: 'Recovered (Long)', D: 'Deceased'};
+    
     class Agent {
         constructor(state, width, height) {
             this.x = Math.random() * width; this.y = Math.random() * height;
@@ -630,7 +744,6 @@
         }
     }
     
-    // =============== START THE APP ===============
     document.addEventListener('DOMContentLoaded', () => App.init());
 
     </script>
