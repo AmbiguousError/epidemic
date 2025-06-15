@@ -5,87 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JavaScript Epidemic Simulator</title>
     
-    <!-- Embedded CSS -->
     <style>
         :root {
-            --bg-color: #1e1e1e;
-            --panel-bg-color: #252526;
-            --border-color: #3e3e42;
-            --text-color: #d4d4d4;
-            --primary-color: #4dc9b0;
-            --error-color: #f44747;
-            --input-bg-color: #3c3c3c;
-            --button-color: #4a4a4a;
-            --button-hover-color: #5a5a5a;
+            --bg-color: #1e1e1e; --panel-bg-color: #252526; --border-color: #3e3e42;
+            --text-color: #d4d4d4; --primary-color: #4dc9b0; --error-color: #f44747;
+            --input-bg-color: #3c3c3c; --button-color: #4a4a4a; --button-hover-color: #5a5a5a;
         }
         * { box-sizing: border-box; }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
+        html, body {
+            height: 100%; margin: 0; padding: 0; overflow: hidden;
+            background-color: var(--bg-color); color: var(--text-color);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
         }
-        h1, h2, h3 {
-            font-weight: 300;
-            margin-top: 0;
-            margin-bottom: 1rem;
-        }
+        body { display: flex; justify-content: center; align-items: center; }
+        h1, h2, h3 { font-weight: 300; margin-top: 0; margin-bottom: 1rem; }
         .main-container {
-            width: 1280px;
-            height: 720px;
-            display: flex;
-            border: 1px solid var(--border-color);
-            background-color: var(--panel-bg-color);
-            overflow: hidden;
+            width: 1280px; height: 720px; display: flex;
+            border: 1px solid var(--border-color); background-color: var(--panel-bg-color); overflow: hidden;
         }
         
-        .view { display: none; }
-        body.view-menu #menu-view { display: flex; }
-        body.view-simulation #simulation-view { display: flex; }
-        body.view-summary #summary-view { display: flex; }
+        .view { display: none; width: 100%; height: 100%; }
+        .view.active { display: flex; }
 
-        /* --- Menu View --- */
-        #menu-view {
-            width: 100%;
-            padding: 20px 40px;
-            flex-direction: column;
-        }
+        #menu-view { padding: 20px 40px; flex-direction: column; }
         .menu-header { text-align: center; color: var(--primary-color); }
         .menu-content { display: flex; flex-grow: 1; gap: 40px; overflow: hidden; }
-        .menu-col { 
-            flex: 1; 
-            padding: 10px; 
-            display: flex; 
-            flex-direction: column;
-            overflow: hidden;
-        }
+        .menu-col { flex: 1; padding: 10px; display: flex; flex-direction: column; overflow: hidden; }
         .menu-col h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-shrink: 0; }
         #disease-library { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
-        #disease-library li {
-            padding: 10px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
+        #disease-library li { padding: 10px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
         #disease-library li:hover { background-color: var(--button-hover-color); }
         #disease-library li.selected { border-color: var(--primary-color); background-color: #3e3e42; }
         
-        #editor-column {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        #editor-form-wrapper {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
+        #editor-column { display: flex; flex-direction: column; overflow: hidden; }
+        #editor-form-wrapper { flex-grow: 1; overflow-y: auto; padding-right: 10px; }
         #editor-form { display: flex; flex-direction: column; gap: 1rem; }
         .form-section { border-left: 2px solid var(--border-color); padding-left: 15px;}
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -93,45 +46,25 @@
         .form-group.full-width { grid-column: 1 / -1; }
         label { margin-bottom: 5px; font-size: 0.9em; color: #ccc; }
         input[type="text"], input[type="number"] {
-            background-color: var(--input-bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 8px;
-            font-size: 1em;
-            width: 100%;
+            background-color: var(--input-bg-color); color: var(--text-color); border: 1px solid var(--border-color);
+            border-radius: 4px; padding: 8px; font-size: 1em; width: 100%;
         }
         #menu-actions-footer { margin-top: auto; padding-top: 1rem; flex-shrink: 0; }
         .button-row { display: flex; gap: 10px; margin-bottom: 10px; }
         button {
-            background-color: var(--button-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 1em;
-            flex-grow: 1;
+            background-color: var(--button-color); color: var(--text-color); border: 1px solid var(--border-color);
+            padding: 10px 15px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s;
+            font-size: 1em; flex-grow: 1;
         }
         button:hover { background-color: var(--button-hover-color); }
         #start-sim-btn { background-color: var(--primary-color); color: var(--bg-color); font-weight: bold; padding: 12px; width: 100%; }
         #delete-profile-btn { background-color: #8b2828; }
         #error-message { color: var(--error-color); min-height: 20px; text-align: center; }
 
-        /* --- Simulation View --- */
-        #simulation-view { 
-            width: 100%; 
-            height: 100%;
-        }
-        #simulation-canvas { background-color: #0a0a0b; }
+        #simulation-view { width: 100%; height: 100%; }
+        #simulation-canvas { background-color: #0a0a0b; height: 100%; flex-grow: 1; }
         #ui-panel {
-            width: 380px;
-            flex-shrink: 0;
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            width: 380px; flex-shrink: 0; padding: 15px; overflow-y: auto; display: flex; flex-direction: column;
         }
         #ui-panel h2, #ui-panel h3 { margin-bottom: 10px; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
@@ -142,49 +75,23 @@
         .chart-container { position: relative; height: 150px; width: 100%; margin-top: auto;}
         #menu-btn { margin-top: 15px; }
 
-        /* --- Summary View --- */
         #summary-view {
-            width: 100%;
-            padding: 40px;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+            width: 100%; padding: 40px; flex-direction: column; align-items: center; justify-content: center; text-align: center;
         }
-        #summary-panel {
-            background-color: #2d2d30;
-            padding: 30px;
-            border-radius: 8px;
-            max-width: 600px;
-        }
-        #summary-title {
-            color: var(--primary-color);
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-        #summary-disease-name {
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
-        }
-        #summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px 30px;
-            text-align: left;
-            margin-bottom: 30px;
-        }
+        #summary-panel { background-color: #2d2d30; padding: 30px; border-radius: 8px; max-width: 600px; }
+        #summary-title { color: var(--primary-color); font-size: 2em; margin-bottom: 10px; }
+        #summary-disease-name { font-size: 1.5em; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
+        #summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; text-align: left; margin-bottom: 30px; }
         #summary-grid .label { color: #aaa; }
         #summary-grid .value { font-size: 1.2em; font-weight: 500;}
     </style>
 </head>
-<body class="view-menu">
+<body>
 
     <div class="main-container">
 
         <!-- ==================== MENU VIEW ==================== -->
-        <div id="menu-view" class="view">
+        <div id="menu-view" class="view active">
             <header class="menu-header"><h1>Disease & Vaccine Simulator</h1></header>
             <div class="menu-content">
                 <div class="menu-col">
@@ -278,7 +185,6 @@
         // =============== INITIALIZATION ===============
         init() {
             this.els = {
-                body: document.body,
                 menuView: document.getElementById('menu-view'), simView: document.getElementById('simulation-view'), summaryView: document.getElementById('summary-view'),
                 simCanvas: document.getElementById('simulation-canvas'), diseaseLibrary: document.getElementById('disease-library'),
                 editorForm: document.getElementById('editor-form'), errorMessage: document.getElementById('error-message'),
@@ -290,7 +196,8 @@
             const inputs = this.els.editorForm.querySelectorAll('input');
             inputs.forEach(input => { this.els.inputs[input.id] = input; });
             this.ctx = this.els.simCanvas.getContext('2d');
-            this.loadProfiles(); this.populateLibrary(); this.addEventListeners(); this.updateView();
+            this.loadProfiles(); this.populateLibrary(); this.addEventListeners();
+            this.switchView('MENU');
         },
         addEventListeners() {
             window.addEventListener('resize', () => this.resizeCanvas());
@@ -381,21 +288,22 @@
             this.diseaseParams.incubation_ticks = Math.round(this.diseaseParams.incubation_days * this.TICKS_PER_DAY);
             this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
             
-            this.appState = 'SIMULATION';
-            this.simulationRunning = true;
-            this.updateView();
-            requestAnimationFrame(() => { this.resetSimulationState(); this.gameLoop(); });
+            this.switchView('SIMULATION');
+            
+            requestAnimationFrame(() => { 
+                this.resetSimulationState();
+                this.simulationRunning = true;
+                this.gameLoop();
+            });
         },
         stopSimulation() {
             this.simulationRunning = false;
-            this.appState = 'MENU';
-            this.updateView();
+            this.switchView('MENU');
         },
         endSimulation() {
             this.simulationRunning = false;
-            this.appState = 'SUMMARY';
             this.populateSummaryView();
-            this.updateView();
+            this.switchView('SUMMARY');
         },
         resetSimulationState() {
             this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
@@ -469,8 +377,10 @@
         },
         
         // =============== UI & CANVAS & CHART ===============
-        updateView() {
-            document.body.className = `view-${this.appState.toLowerCase()}`;
+        switchView(viewName) {
+            this.appState = viewName;
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`${viewName.toLowerCase()}-view`).classList.add('active');
         },
         resizeCanvas() {
             const panelWidth = this.els.uiPanel.offsetWidth;
