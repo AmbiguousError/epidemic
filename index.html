@@ -44,9 +44,9 @@
             overflow: hidden;
         }
         
-        .hidden {
-            display: none !important;
-        }
+        /* FIX: Robust view switching system */
+        body.view-menu #simulation-view { display: none; }
+        body.view-simulation #menu-view { display: none; }
 
         /* --- Menu View --- */
         #menu-view {
@@ -128,6 +128,7 @@
         #simulation-canvas { background-color: #0a0a0b; }
         #ui-panel {
             width: 380px;
+            flex-shrink: 0;
             padding: 15px;
             overflow-y: auto;
             display: flex;
@@ -143,7 +144,7 @@
         #menu-btn { margin-top: 15px; }
     </style>
 </head>
-<body>
+<body class="view-menu"> <!-- Start in menu view -->
 
     <div class="main-container">
 
@@ -197,7 +198,7 @@
             </div>
         </div>
 
-        <!-- ==================== SIMULATION VIEW (starts hidden) ==================== -->
+        <!-- ==================== SIMULATION VIEW ==================== -->
         <div id="simulation-view" class="hidden">
             <canvas id="simulation-canvas"></canvas>
             <div id="ui-panel">
@@ -257,7 +258,7 @@
             inputs.forEach(input => { this.els.inputs[input.id] = input; });
             
             this.ctx = this.els.simCanvas.getContext('2d');
-            this.resizeCanvas(); this.loadProfiles(); this.populateLibrary();
+            this.loadProfiles(); this.populateLibrary();
             this.addEventListeners(); this.updateView();
         },
         addEventListeners() {
@@ -331,7 +332,7 @@
             this.els.errorMessage.style.color = isError ? 'var(--error-color)' : 'var(--primary-color)';
         },
 
-        // =============== SIMULATION CONTROL (FIXED) ===============
+        // =============== SIMULATION CONTROL ===============
         startSimulation() {
             this.showError(''); 
             
@@ -368,8 +369,8 @@
             this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
             
             this.appState = 'SIMULATION';
-            this.updateView();
             this.simulationRunning = true;
+            this.updateView();
             this.resetSimulationState();
             requestAnimationFrame(() => this.gameLoop());
         },
@@ -454,12 +455,13 @@
         
         // =============== UI & CANVAS & CHART ===============
         updateView() {
+            // FIX: Use body classes for robust view switching
             if (this.appState === 'MENU') {
-                this.els.menuView.classList.remove('hidden');
-                this.els.simView.classList.add('hidden');
+                document.body.classList.add('view-menu');
+                document.body.classList.remove('view-simulation');
             } else {
-                this.els.menuView.classList.add('hidden');
-                this.els.simView.classList.remove('hidden');
+                document.body.classList.add('view-simulation');
+                document.body.classList.remove('view-menu');
                 this.resizeCanvas();
                 this.initChart();
             }
@@ -579,3 +581,4 @@
     </script>
 </body>
 </html>
+
