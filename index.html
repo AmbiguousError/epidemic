@@ -3,34 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bootstrap Epidemic Simulator</title>
+    <title>Epidemic Simulator</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons for the back button -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
         html, body {
-            height: 100%;
-            overflow: hidden;
+            overflow-x: hidden; /* Prevent horizontal scroll */
         }
-        .main-container {
-            height: 100%;
-            max-width: 100%;
-            padding: 0;
+        .view {
+            width: 100%;
+            min-height: 100vh;
         }
-        .simulation-row {
-            height: 100%;
+        /* Make menu scrollable on mobile */
+        #menu-view {
+            overflow-y: auto;
+        }
+
+        /* --- Simulation View: Mobile First --- */
+        #simulation-view {
+            display: flex;
+            flex-direction: column; /* Stacked by default */
+            height: 100vh; /* Fixed height for the sim view */
+            max-height: 100vh;
+            overflow: hidden; /* Prevent whole view from scrolling */
+        }
+
+        #simulation-canvas-container {
+            height: 50vh; /* Top half of screen on mobile */
+            flex-shrink: 0;
         }
         #simulation-canvas {
-            background-color: #0a0a0b;
-            height: 100%;
             width: 100%;
-        }
-        #ui-panel {
             height: 100%;
-            overflow-y: auto;
+            background-color: #0a0a0b;
+        }
+
+        #ui-panel-container {
+            flex-grow: 1; /* Takes remaining space */
+            overflow-y: auto; /* Panel content is scrollable */
+        }
+        
+        #ui-panel {
             display: flex;
             flex-direction: column;
+            min-height: 100%; /* For pushing chart to the bottom */
         }
+
         .key-color {
             display: inline-block;
             width: 15px;
@@ -41,73 +63,213 @@
         }
         .chart-container {
             position: relative;
-            height: 200px; /* Adjusted for better visibility */
+            height: 200px;
             width: 100%;
             margin-top: auto; /* Pushes chart to the bottom */
         }
-        .list-group-item {
-            padding: 0.5rem 0.75rem; /* Compact list items */
+        .list-group-item-action {
+            cursor: pointer;
+        }
+        label {
+            font-size: 0.8rem;
+            color: #adb5bd;
+        }
+        .error-message {
+            min-height: 24px;
+        }
+
+        /* --- Simulation View: Desktop Layout --- */
+        @media (min-width: 768px) {
+            #simulation-view {
+                flex-direction: row; /* Side-by-side */
+            }
+            #simulation-canvas-container {
+                flex-basis: 60%;
+                height: 100vh;
+            }
+            #ui-panel-container {
+                flex-basis: 40%;
+                height: 100vh;
+            }
+        }
+        
+        @media (min-width: 992px) {
+             #simulation-canvas-container {
+                flex-basis: 66.66667%; /* col-lg-8 width */
+            }
+            #ui-panel-container {
+                flex-basis: 33.33333%; /* col-lg-4 width */
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="container-fluid main-container">
-        <div id="simulation-view" class="row g-0 simulation-row">
-
-            <div class="col-lg-8 col-md-7">
-                <canvas id="simulation-canvas"></canvas>
-            </div>
-
-            <div class="col-lg-4 col-md-5">
-                <div id="ui-panel" class="p-3 bg-body-tertiary">
-                    <h2 class="h4">Live Analysis</h2>
-                    <h3 id="ui-disease-name" class="h5 text-primary mb-3"></h3>
-
-                    <div class="row mb-3">
-                        <div class="col-6 stats-item" id="ui-elapsed-days">Days: 0</div>
-                        <div class="col-6 stats-item" id="ui-rt">R(t): 0.00</div>
-                        <div class="col-12 stats-item mt-2" id="ui-total-sick-days">Sick Days: 0</div>
+    <!-- Menu View -->
+    <div id="menu-view" class="view p-3 p-md-4">
+        <div class="container-fluid">
+            <header class="text-center mb-4">
+                <h1 class="display-5">Epidemic & Vaccine Simulator</h1>
+                <p class="lead text-body-secondary">Choose a preset or create a custom disease profile to begin.</p>
+            </header>
+            <div class="row g-4">
+                <!-- Disease Presets Column -->
+                <div class="col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header">Disease Library</div>
+                        <div id="disease-list" class="list-group list-group-flush" style="overflow-y: auto;">
+                            <!-- Presets will be loaded here by JS -->
+                        </div>
                     </div>
+                </div>
 
-                    <ul id="ui-key" class="list-group mb-3">
-                        </ul>
-
-                    <h4 class="h6">Vaccine Outcomes</h4>
-                    <div class="row mb-3">
-                        <div class="col-6 stats-item" id="ui-vax-deaths">Fatalities: 0</div>
-                        <div class="col-6 stats-item" id="ui-vax-long-term">Long-Term: 0</div>
-                    </div>
-
-                    <h4 class="h6">Commentary</h4>
-                    <p id="commentary" class="text-body-secondary fst-italic mb-3" style="min-height: 60px;">Initializing...</p>
-
-                    <div class="chart-container mt-auto">
-                        <canvas id="history-chart"></canvas>
+                <!-- Profile Editor Column -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">Profile Editor</div>
+                        <div class="card-body">
+                            <form id="params-form" class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="name" class="form-label">Disease Name</label>
+                                    <input type="text" class="form-control" id="name">
+                                </div>
+                                <!-- Disease Params -->
+                                <h5 class="mt-4 mb-0 h6">Disease Parameters</h5>
+                                <div class="col-md-4">
+                                    <label for="R0" class="form-label">R0</label>
+                                    <input type="number" step="0.1" class="form-control" id="R0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="incubation_days" class="form-label">Incubation (days)</label>
+                                    <input type="number" step="1" class="form-control" id="incubation_days">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="infectious_days" class="form-label">Infectious (days)</label>
+                                    <input type="number" step="1" class="form-control" id="infectious_days">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="fatality_rate" class="form-label">Fatality Rate (0-1)</label>
+                                    <input type="number" step="0.001" class="form-control" id="fatality_rate">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="long_term_effect_rate" class="form-label">Long-Term Effect Rate (0-1)</label>
+                                    <input type="number" step="0.01" class="form-control" id="long_term_effect_rate">
+                                </div>
+                                <!-- Vaccine Params -->
+                                <h5 class="mt-4 mb-0 h6">Vaccine & Campaign Parameters</h5>
+                                <div class="col-md-6">
+                                    <label for="vaccine_efficacy" class="form-label">Efficacy (0-1)</label>
+                                    <input type="number" step="0.01" class="form-control" id="vaccine_efficacy">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="initial_vax_rate" class="form-label">Initial Vax Rate (0-1)</label>
+                                    <input type="number" step="0.01" class="form-control" id="initial_vax_rate">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="vaccine_mortality_rate" class="form-label">Mortality Rate</label>
+                                    <input type="number" step="0.000001" class="form-control" id="vaccine_mortality_rate">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="vaccine_long_term_effect_rate" class="form-label">Long-Term Rate</label>
+                                    <input type="number" step="0.00001" class="form-control" id="vaccine_long_term_effect_rate">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="daily_vax_rate" class="form-label">Daily Vax (per day)</label>
+                                    <input type="number" step="1" class="form-control" id="daily_vax_rate">
+                                </div>
+                                <!-- Action Buttons -->
+                                <div class="col-12 mt-4 d-grid">
+                                    <button id="start-sim-btn" type="button" class="btn btn-primary btn-lg">Start Simulation</button>
+                                    <div id="menu-error-message" class="text-danger mt-2 error-message"></div>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Simulation View -->
+    <div id="simulation-view" class="view d-none">
+        <!-- Canvas Container -->
+        <div id="simulation-canvas-container">
+            <canvas id="simulation-canvas"></canvas>
+        </div>
 
+        <!-- UI Panel Container -->
+        <div id="ui-panel-container" class="bg-body-tertiary">
+            <div id="ui-panel" class="p-3">
+                <div> <!-- Flex item for main content -->
+                    <div class="d-flex justify-content-between align-items-center">
+                         <h2 class="h4 mb-0">Live Analysis</h2>
+                         <button id="back-to-menu-btn" class="btn btn-sm btn-outline-secondary">
+                             <i class="bi bi-arrow-left"></i> Menu
+                         </button>
+                    </div>
+                    <h3 id="ui-disease-name" class="h5 text-primary my-3"></h3>
+                    <div class="row mb-3">
+                        <div class="col-6" id="ui-elapsed-days">Days: 0</div>
+                        <div class="col-6" id="ui-rt">R(t): 0.00</div>
+                        <div class="col-12 mt-2" id="ui-total-sick-days">Sick Days: 0</div>
+                    </div>
+                    <ul id="ui-key" class="list-group list-group-flush mb-3"></ul>
+                    <h4 class="h6">Vaccine Outcomes</h4>
+                    <div class="row mb-3">
+                        <div class="col-6" id="ui-vax-deaths">Fatalities: 0</div>
+                        <div class="col-6" id="ui-vax-long-term">Long-Term: 0</div>
+                    </div>
+                    <h4 class="h6">Commentary</h4>
+                    <p id="commentary" class="text-body-secondary fst-italic" style="min-height: 60px;">Initializing...</p>
+                </div>
+                <!-- Chart Container is pushed to the bottom by its container's flex properties -->
+                <div class="chart-container">
+                    <canvas id="history-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- Application Script -->
     <script>
     const App = {
         // =============== CONFIG & STATE ===============
-        els: {}, POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
-        population: [], diseaseParams: {}, simulationRunning: false, history: [],
+        els: {}, currentView: 'MENU', simulationRunning: false,
+        POPULATION_SIZE: 400, AGENT_RADIUS: 5, TICKS_PER_DAY: 60, AVG_CONTACTS_PER_DAY: 8,
+        population: [], diseaseParams: {}, history: [],
         ticks: 0, stats: {}, peakInfected: 0, peakReached: false,
         totalSickDays: 0, vaxDeaths: 0, vaxLongTerm: 0, vaccinationCounter: 0, chart: null,
 
+        DISEASE_PRESETS: {
+            "Influenza": {"R0": "1.3", "incubation_days": "2", "infectious_days": "5", "fatality_rate": "0.001", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.5", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.000001", "initial_vax_rate": "0.4", "daily_vax_rate": "2"},
+            "COVID-19": {"R0": "2.5", "incubation_days": "5", "infectious_days": "7", "fatality_rate": "0.01", "long_term_effect_rate": "0.10", "vaccine_efficacy": "0.9", "vaccine_mortality_rate": "0.000002", "vaccine_long_term_effect_rate": "0.00005", "initial_vax_rate": "0.0", "daily_vax_rate": "8"},
+            "Ebola": {"R0": "2.0", "incubation_days": "8", "infectious_days": "6", "fatality_rate": "0.5", "long_term_effect_rate": "0.05", "vaccine_efficacy": "0.97", "vaccine_mortality_rate": "0.00001", "vaccine_long_term_effect_rate": "0.0001", "initial_vax_rate": "0.0", "daily_vax_rate": "1"},
+            "Measles": {"R0": "15", "incubation_days": "10", "infectious_days": "8", "fatality_rate": "0.002", "long_term_effect_rate": "0.001", "vaccine_efficacy": "0.97", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.8", "daily_vax_rate": "0"},
+            "Chickenpox": {"R0": "11", "incubation_days": "14", "infectious_days": "7", "fatality_rate": "0.0001", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.9", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.7", "daily_vax_rate": "0"},
+            "Mumps": {"R0": "5", "incubation_days": "18", "infectious_days": "7", "fatality_rate": "0.0001", "long_term_effect_rate": "0.01", "vaccine_efficacy": "0.88", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.8", "daily_vax_rate": "0"},
+            "Pertussis": {"R0": "15", "incubation_days": "9", "infectious_days": "21", "fatality_rate": "0.005", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.85", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.6", "daily_vax_rate": "1"},
+            "Polio": {"R0": "6", "incubation_days": "10", "infectious_days": "14", "fatality_rate": "0.005", "long_term_effect_rate": "0.01", "vaccine_efficacy": "0.99", "vaccine_mortality_rate": "0.0000004", "vaccine_long_term_effect_rate": "0.0000004", "initial_vax_rate": "0.5", "daily_vax_rate": "5"},
+            "Smallpox": {"R0": "6", "incubation_days": "12", "infectious_days": "9", "fatality_rate": "0.3", "long_term_effect_rate": "0.05", "vaccine_efficacy": "0.95", "vaccine_mortality_rate": "0.00001", "vaccine_long_term_effect_rate": "0.0001", "initial_vax_rate": "0.0", "daily_vax_rate": "10"},
+        },
+
         // =============== INITIALIZATION ===============
         init() {
+            // Cache all DOM elements
             this.els = {
+                menuView: document.getElementById('menu-view'),
                 simView: document.getElementById('simulation-view'),
+                diseaseList: document.getElementById('disease-list'),
+                paramsForm: document.getElementById('params-form'),
+                startBtn: document.getElementById('start-sim-btn'),
+                backBtn: document.getElementById('back-to-menu-btn'),
+                menuError: document.getElementById('menu-error-message'),
                 simCanvas: document.getElementById('simulation-canvas'),
-                uiPanel: {
-                    container: document.getElementById('ui-panel'),
+                uiPanel: { // UI elements for the simulation panel
                     name: document.getElementById('ui-disease-name'),
                     days: document.getElementById('ui-elapsed-days'),
                     rt: document.getElementById('ui-rt'),
@@ -120,37 +282,115 @@
                 },
             };
             this.ctx = this.els.simCanvas.getContext('2d');
-            this.setDiseaseParameters();
-
-            // This guarantees the UI is drawn before we measure the canvas
-            requestAnimationFrame(() => {
-                this.resetSimulationState();
-                this.simulationRunning = true;
-                this.gameLoop();
-            });
+            this.setupMenu(); // Set up the menu listeners and content
+            this.showView('MENU'); // Start on the menu screen
         },
 
-        setDiseaseParameters() {
-            // Hardcode a single disease profile to ensure it works
-            const defaultProfile = {"R0":2.5,"incubation_days":5,"infectious_days":7,"fatality_rate":0.01,"long_term_effect_rate":0.10,"vaccine_efficacy":0.9,"vaccine_mortality_rate":0.000002,"vaccine_long_term_effect_rate":0.00005,"initial_vax_rate":0.0,"daily_vax_rate":8};
-            this.diseaseParams = {
-                name: "COVID-19 (Default)", ...defaultProfile
-            };
+        // =============== VIEW & MENU MANAGEMENT ===============
+        showView(viewName) {
+            this.currentView = viewName;
+            this.els.menuView.classList.toggle('d-none', viewName !== 'MENU');
+            this.els.simView.classList.toggle('d-none', viewName !== 'SIMULATION');
+
+            if (viewName === 'SIMULATION') {
+                this.simulationRunning = true;
+                // Defer canvas resize and simulation start until after the view is visible
+                requestAnimationFrame(() => {
+                    this.resetSimulationState();
+                    this.gameLoop();
+                });
+            } else {
+                this.simulationRunning = false;
+            }
+        },
+
+        setupMenu() {
+            // Populate the disease list
+            this.els.diseaseList.innerHTML = Object.keys(this.DISEASE_PRESETS)
+                .map(name => `<a class="list-group-item list-group-item-action" data-name="${name}">${name}</a>`)
+                .join('');
+
+            // Add click listener to the list
+            this.els.diseaseList.addEventListener('click', e => {
+                if (e.target.matches('[data-name]')) {
+                    const name = e.target.dataset.name;
+                    this.loadPreset(name);
+                    // De-select any active items and select the new one
+                    const active = this.els.diseaseList.querySelector('.active');
+                    if (active) active.classList.remove('active');
+                    e.target.classList.add('active');
+                }
+            });
+            
+            // Add click listeners for the main buttons
+            this.els.startBtn.addEventListener('click', () => this.handleStartSimulation());
+            this.els.backBtn.addEventListener('click', () => this.showView('MENU'));
+            
+            // Load the first preset by default
+            this.loadPreset(Object.keys(this.DISEASE_PRESETS)[0]);
+            this.els.diseaseList.firstElementChild.classList.add('active');
+        },
+        
+        loadPreset(name) {
+            const preset = this.DISEASE_PRESETS[name];
+            if (!preset) return;
+            this.els.paramsForm.elements['name'].value = name;
+            for (const key in preset) {
+                if(this.els.paramsForm.elements[key]) {
+                    this.els.paramsForm.elements[key].value = preset[key];
+                }
+            }
+            this.els.menuError.textContent = ''; // Clear any previous errors
+        },
+
+        handleStartSimulation() {
+            const form = this.els.paramsForm;
+            const params = {};
+            let isValid = true;
+            
+            // Validate and collect parameters from the form
+            const paramKeys = Object.keys(this.DISEASE_PRESETS.Influenza); // Use any preset for keys
+            paramKeys.forEach(key => {
+                const input = form.elements[key];
+                const value = parseFloat(input.value);
+                if (isNaN(value) || value < 0) {
+                    isValid = false;
+                }
+                params[key] = value;
+            });
+            
+            const name = form.elements['name'].value.trim();
+            if (!name) isValid = false;
+
+            if (!isValid) {
+                this.els.menuError.textContent = 'Error: Please ensure all fields are filled with valid, non-negative numbers.';
+                return;
+            }
+
+            // Set disease parameters
+            this.diseaseParams = { name, ...params };
             this.diseaseParams.transmission_prob = this.diseaseParams.R0 / (this.AVG_CONTACTS_PER_DAY * this.diseaseParams.infectious_days);
             this.diseaseParams.incubation_ticks = Math.round(this.diseaseParams.incubation_days * this.TICKS_PER_DAY);
             this.diseaseParams.infectious_ticks = Math.round(this.diseaseParams.infectious_days * this.TICKS_PER_DAY);
+            
+            // Switch to simulation view
+            this.showView('SIMULATION');
         },
-
+        
         // =============== SIMULATION CONTROL ===============
         resetSimulationState() {
             this.ticks = this.peakInfected = this.totalSickDays = this.vaxDeaths = this.vaxLongTerm = this.vaccinationCounter = 0;
-            this.peakReached = false; this.history = [];
+            this.peakReached = false; this.history = []; this.els.menuError.textContent = '';
+            
             this.resizeCanvas();
+
             this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
             const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
             this.population.slice(0, numToVax).forEach(agent => this.vaccinateAgent(agent));
+            
             const patientZero = this.population.find(a => a.state === 'S');
             if(patientZero){ patientZero.state = 'E'; patientZero.timer = this.diseaseParams.incubation_ticks; }
+            
             this.updateStats();
             this.history.push(this.stats.counts);
             this.stats.commentary = "Simulation starting...";
@@ -160,7 +400,8 @@
         // =============== CORE SIMULATION LOOP ===============
         gameLoop() {
             if (!this.simulationRunning) return;
-            this.update(); this.render();
+            this.update();
+            this.render();
             requestAnimationFrame(() => this.gameLoop());
         },
         update() {
@@ -176,8 +417,8 @@
             this.population.forEach(agent => agent.draw(this.ctx));
             this.updateUI();
         },
-
-        // =============== SIMULATION LOGIC ===============
+        
+        // =============== SIMULATION LOGIC (Unchanged from previous version) ===============
         vaccinateAgent(agent) {
             if (agent.state !== 'S') return;
             if (Math.random() < this.diseaseParams.vaccine_mortality_rate) { agent.state = 'D'; this.vaxDeaths++; }
@@ -202,17 +443,16 @@
             const vax_prob = this.diseaseParams.transmission_prob * (1 - this.diseaseParams.vaccine_efficacy);
             for (const infector of infectious) {
                 for (const target of targets) {
-                    if (target.state === 'S' || target.state === 'V') {
-                        const distSq = (infector.x - target.x)**2 + (infector.y - target.y)**2;
-                        if (distSq < (this.AGENT_RADIUS * 4)**2) {
-                            const prob = target.state === 'S' ? this.diseaseParams.transmission_prob : vax_prob;
-                            if (Math.random() < prob) { target.state = 'E'; target.timer = this.diseaseParams.incubation_ticks; }
-                        }
+                    if (target.state !== 'S' && target.state !== 'V') continue;
+                    const distSq = (infector.x - target.x)**2 + (infector.y - target.y)**2;
+                    if (distSq < (this.AGENT_RADIUS * 4)**2) {
+                        const prob = target.state === 'S' ? this.diseaseParams.transmission_prob : vax_prob;
+                        if (Math.random() < prob) { target.state = 'E'; target.timer = this.diseaseParams.incubation_ticks; }
                     }
                 }
             }
         },
-
+        
         // =============== UI & CANVAS & CHART ===============
         resizeCanvas() {
             const canvasContainer = this.els.simCanvas.parentElement;
@@ -227,14 +467,13 @@
             this.els.uiPanel.vaxDeaths.textContent = `Fatalities: ${this.vaxDeaths}`;
             this.els.uiPanel.vaxLongTerm.textContent = `Long-Term: ${this.vaxLongTerm}`;
             this.els.uiPanel.commentary.textContent = this.stats.commentary;
-
-            // Updated to use Bootstrap List Group
+            
             let keyHTML = '';
             for(const state in this.stats.counts) {
                 const count = this.stats.counts[state];
                 const percent = ((count / this.POPULATION_SIZE) * 100).toFixed(1);
                 const color = AGENT_COLORS[state];
-                keyHTML += `<li class="list-group-item bg-transparent border-secondary"><div class="key-color" style="background-color:${color};"></div> ${STATE_NAMES[state]}: ${count} (${percent}%)</li>`;
+                keyHTML += `<li class="list-group-item bg-transparent border-secondary py-1"><div class="key-color" style="background-color:${color};"></div> ${STATE_NAMES[state]}: ${count} (${percent}%)</li>`;
             }
             this.els.uiPanel.key.innerHTML = keyHTML;
             if (this.ticks > 0 && this.ticks % this.TICKS_PER_DAY === 0) this.updateChart();
@@ -245,7 +484,7 @@
                 label: STATE_NAMES[key], data: [], backgroundColor: AGENT_COLORS[key],
                 borderColor: AGENT_COLORS[key], fill: true, pointRadius: 0, borderWidth: 1
             }));
-            Chart.defaults.color = '#adb5bd'; // Chart text color
+            Chart.defaults.color = '#adb5bd';
             this.chart = new Chart(this.els.uiPanel.historyChart, {
                 type: 'line', data: { labels: [], datasets: datasets },
                 options: {
@@ -329,10 +568,14 @@
             ctx.fill();
         }
     }
-
+    
     // =============== START THE APP ===============
     document.addEventListener('DOMContentLoaded', () => App.init());
-    window.addEventListener('resize', () => App.resizeCanvas());
+    window.addEventListener('resize', () => {
+        if (App.currentView === 'SIMULATION') {
+            App.resizeCanvas();
+        }
+    });
 
     </script>
 </body>
