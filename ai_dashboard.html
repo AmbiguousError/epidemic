@@ -471,13 +471,18 @@
             this.els.endGame.section.style.display = 'none';
             this.els.endGame.output.textContent = 'Select a specialist and generate a report for a final analysis.';
 
-            // FIX: Ensure canvas has dimensions before creating agents
             const w = this.els.simCanvas.width;
             const h = this.els.simCanvas.height;
-            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', w, h));
+            if (w === 0 || h === 0) {
+                console.error("Canvas dimensions are zero. Cannot create agents.");
+                // Fallback or wait for resize might be needed in a real app
+                const container = document.querySelector('.main-container');
+                this.els.simCanvas.width = container.offsetWidth - this.els.uiPanel.container.offsetWidth;
+                this.els.simCanvas.height = container.offsetHeight;
+            }
+            this.population = Array.from({length: this.POPULATION_SIZE}, () => new Agent('S', this.els.simCanvas.width, this.els.simCanvas.height));
             
             const numToVax = Math.floor(this.POPULATION_SIZE * this.diseaseParams.initial_vax_rate);
-            // Ensure we don't try to vaccinate non-existent agents if population is small
             const susceptiblePopulation = this.population.filter(a => a.state === 'S');
             for(let i=0; i < Math.min(numToVax, susceptiblePopulation.length); i++){
                 this.vaccinateAgent(susceptiblePopulation[i]);
@@ -676,24 +681,26 @@
         
         generateFinalReport() {
             const specialist = this.els.endGame.specialistSelect.value;
-            const persona = this.specialistPersonas[specialist];
+            const selectedOption = this.els.endGame.specialistSelect.options[this.els.endGame.specialistSelect.selectedIndex];
+            const specialistName = selectedOption.text;
+            
             const finalStats = { ...this.stats, ...this.diseaseParams, peakInfected: this.peakInfected, totalSickDays: Math.floor(this.totalSickDays), totalVaccinated: Math.floor(this.vaccinationCounter) };
             
             let dataSummary = `
-            Final Data Summary:
-            - Disease: ${finalStats.name} (R0: ${finalStats.R0})
-            - Duration: ${finalStats.elapsed_days} days
-            - Peak Active Infections: ${finalStats.peakInfected}
-            - Total Fatalities (Disease): ${finalStats.counts.D - this.vaxDeaths}
-            - Total Recovered with Long-Term Effects: ${finalStats.counts.R_LONG - this.vaxLongTerm}
-            - Total Sick Days: ${finalStats.totalSickDays}
-            - Total Doses Administered: ${finalStats.totalVaccinated}
-            - Vaccine Fatalities: ${this.vaxDeaths}
-            - Vaccine Long-Term Effects: ${this.vaxLongTerm}
+Final Data Summary:
+- Disease: ${finalStats.name} (R0: ${finalStats.R0})
+- Duration: ${finalStats.elapsed_days} days
+- Peak Active Infections: ${finalStats.peakInfected}
+- Total Fatalities (Disease): ${finalStats.counts.D - this.vaxDeaths}
+- Total Recovered with Long-Term Effects: ${finalStats.counts.R_LONG - this.vaxLongTerm}
+- Total Sick Days: ${finalStats.totalSickDays}
+- Total Doses Administered: ${finalStats.totalVaccinated}
+- Vaccine Fatalities: ${this.vaxDeaths}
+- Vaccine Long-Term Effects: ${this.vaxLongTerm}
             `;
 
-            // This simulates the AI response based on the persona and data
-            let report = `${persona}\n\n${dataSummary}\n\n--- AI ANALYSIS ---\n`;
+            let report = `[${specialistName} Analysis]\n\n${dataSummary}\n\n`;
+
             if (specialist === 'epidemiologist') {
                 report += `The disease, with a base R0 of ${finalStats.R0}, spread rapidly before peaking at ${finalStats.peakInfected} cases. The vaccination campaign, achieving ${finalStats.totalVaccinated} doses, was critical in eventually suppressing transmission. However, the initial growth phase indicates a highly infectious pathogen that requires swift intervention.`;
             } else if (specialist === 'economist') {
