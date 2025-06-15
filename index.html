@@ -12,25 +12,47 @@
 
     <style>
         html, body {
-            height: 100%;
-            overflow: hidden;
+            overflow-x: hidden; /* Prevent horizontal scroll */
         }
         .view {
             width: 100%;
-            height: 100%;
+            min-height: 100vh;
         }
-        #simulation-view .row, #simulation-view .col-md-7, #simulation-view .col-md-5 {
-            height: 100%;
-        }
-        #simulation-canvas {
-            background-color: #0a0a0b;
-            height: 100%;
-            width: 100%;
-        }
-        #ui-panel {
-            height: 100%;
+        /* Make menu scrollable on mobile */
+        #menu-view {
             overflow-y: auto;
         }
+
+        /* --- Simulation View: Mobile First --- */
+        #simulation-view {
+            display: flex;
+            flex-direction: column; /* Stacked by default */
+            height: 100vh; /* Fixed height for the sim view */
+            max-height: 100vh;
+            overflow: hidden; /* Prevent whole view from scrolling */
+        }
+
+        #simulation-canvas-container {
+            height: 50vh; /* Top half of screen on mobile */
+            flex-shrink: 0;
+        }
+        #simulation-canvas {
+            width: 100%;
+            height: 100%;
+            background-color: #0a0a0b;
+        }
+
+        #ui-panel-container {
+            flex-grow: 1; /* Takes remaining space */
+            overflow-y: auto; /* Panel content is scrollable */
+        }
+        
+        #ui-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%; /* For pushing chart to the bottom */
+        }
+
         .key-color {
             display: inline-block;
             width: 15px;
@@ -43,13 +65,10 @@
             position: relative;
             height: 200px;
             width: 100%;
+            margin-top: auto; /* Pushes chart to the bottom */
         }
         .list-group-item-action {
             cursor: pointer;
-        }
-        .form-control-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
         }
         label {
             font-size: 0.8rem;
@@ -57,6 +76,30 @@
         }
         .error-message {
             min-height: 24px;
+        }
+
+        /* --- Simulation View: Desktop Layout --- */
+        @media (min-width: 768px) {
+            #simulation-view {
+                flex-direction: row; /* Side-by-side */
+            }
+            #simulation-canvas-container {
+                flex-basis: 60%;
+                height: 100vh;
+            }
+            #ui-panel-container {
+                flex-basis: 40%;
+                height: 100vh;
+            }
+        }
+        
+        @media (min-width: 992px) {
+             #simulation-canvas-container {
+                flex-basis: 66.66667%; /* col-lg-8 width */
+            }
+            #ui-panel-container {
+                flex-basis: 33.33333%; /* col-lg-4 width */
+            }
         }
     </style>
 </head>
@@ -149,44 +192,44 @@
 
     <!-- Simulation View -->
     <div id="simulation-view" class="view d-none">
-        <div class="row g-0">
-            <!-- Simulation Canvas Column -->
-            <div class="col-lg-8 col-md-7">
-                <canvas id="simulation-canvas"></canvas>
-            </div>
-            <!-- UI Panel Column -->
-            <div class="col-lg-4 col-md-5">
-                <div id="ui-panel" class="p-3 bg-body-tertiary d-flex flex-column">
-                    <div> <!-- Flex item for content -->
-                        <div class="d-flex justify-content-between align-items-center">
-                             <h2 class="h4 mb-0">Live Analysis</h2>
-                             <button id="back-to-menu-btn" class="btn btn-sm btn-outline-secondary">
-                                 <i class="bi bi-arrow-left"></i> Menu
-                             </button>
-                        </div>
-                        <h3 id="ui-disease-name" class="h5 text-primary my-3"></h3>
-                        <div class="row mb-3">
-                            <div class="col-6" id="ui-elapsed-days">Days: 0</div>
-                            <div class="col-6" id="ui-rt">R(t): 0.00</div>
-                            <div class="col-12 mt-2" id="ui-total-sick-days">Sick Days: 0</div>
-                        </div>
-                        <ul id="ui-key" class="list-group list-group-flush mb-3"></ul>
-                        <h4 class="h6">Vaccine Outcomes</h4>
-                        <div class="row mb-3">
-                            <div class="col-6" id="ui-vax-deaths">Fatalities: 0</div>
-                            <div class="col-6" id="ui-vax-long-term">Long-Term: 0</div>
-                        </div>
-                        <h4 class="h6">Commentary</h4>
-                        <p id="commentary" class="text-body-secondary fst-italic" style="min-height: 60px;">Initializing...</p>
+        <!-- Canvas Container -->
+        <div id="simulation-canvas-container">
+            <canvas id="simulation-canvas"></canvas>
+        </div>
+
+        <!-- UI Panel Container -->
+        <div id="ui-panel-container" class="bg-body-tertiary">
+            <div id="ui-panel" class="p-3">
+                <div> <!-- Flex item for main content -->
+                    <div class="d-flex justify-content-between align-items-center">
+                         <h2 class="h4 mb-0">Live Analysis</h2>
+                         <button id="back-to-menu-btn" class="btn btn-sm btn-outline-secondary">
+                             <i class="bi bi-arrow-left"></i> Menu
+                         </button>
                     </div>
-                    <!-- Chart Container will be pushed to the bottom -->
-                    <div class="chart-container mt-auto">
-                        <canvas id="history-chart"></canvas>
+                    <h3 id="ui-disease-name" class="h5 text-primary my-3"></h3>
+                    <div class="row mb-3">
+                        <div class="col-6" id="ui-elapsed-days">Days: 0</div>
+                        <div class="col-6" id="ui-rt">R(t): 0.00</div>
+                        <div class="col-12 mt-2" id="ui-total-sick-days">Sick Days: 0</div>
                     </div>
+                    <ul id="ui-key" class="list-group list-group-flush mb-3"></ul>
+                    <h4 class="h6">Vaccine Outcomes</h4>
+                    <div class="row mb-3">
+                        <div class="col-6" id="ui-vax-deaths">Fatalities: 0</div>
+                        <div class="col-6" id="ui-vax-long-term">Long-Term: 0</div>
+                    </div>
+                    <h4 class="h6">Commentary</h4>
+                    <p id="commentary" class="text-body-secondary fst-italic" style="min-height: 60px;">Initializing...</p>
+                </div>
+                <!-- Chart Container is pushed to the bottom by its container's flex properties -->
+                <div class="chart-container">
+                    <canvas id="history-chart"></canvas>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -208,6 +251,9 @@
             "Ebola": {"R0": "2.0", "incubation_days": "8", "infectious_days": "6", "fatality_rate": "0.5", "long_term_effect_rate": "0.05", "vaccine_efficacy": "0.97", "vaccine_mortality_rate": "0.00001", "vaccine_long_term_effect_rate": "0.0001", "initial_vax_rate": "0.0", "daily_vax_rate": "1"},
             "Measles": {"R0": "15", "incubation_days": "10", "infectious_days": "8", "fatality_rate": "0.002", "long_term_effect_rate": "0.001", "vaccine_efficacy": "0.97", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.8", "daily_vax_rate": "0"},
             "Chickenpox": {"R0": "11", "incubation_days": "14", "infectious_days": "7", "fatality_rate": "0.0001", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.9", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.7", "daily_vax_rate": "0"},
+            "Mumps": {"R0": "5", "incubation_days": "18", "infectious_days": "7", "fatality_rate": "0.0001", "long_term_effect_rate": "0.01", "vaccine_efficacy": "0.88", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.8", "daily_vax_rate": "0"},
+            "Pertussis": {"R0": "15", "incubation_days": "9", "infectious_days": "21", "fatality_rate": "0.005", "long_term_effect_rate": "0.0", "vaccine_efficacy": "0.85", "vaccine_mortality_rate": "0.000001", "vaccine_long_term_effect_rate": "0.0", "initial_vax_rate": "0.6", "daily_vax_rate": "1"},
+            "Polio": {"R0": "6", "incubation_days": "10", "infectious_days": "14", "fatality_rate": "0.005", "long_term_effect_rate": "0.01", "vaccine_efficacy": "0.99", "vaccine_mortality_rate": "0.0000004", "vaccine_long_term_effect_rate": "0.0000004", "initial_vax_rate": "0.5", "daily_vax_rate": "5"},
             "Smallpox": {"R0": "6", "incubation_days": "12", "infectious_days": "9", "fatality_rate": "0.3", "long_term_effect_rate": "0.05", "vaccine_efficacy": "0.95", "vaccine_mortality_rate": "0.00001", "vaccine_long_term_effect_rate": "0.0001", "initial_vax_rate": "0.0", "daily_vax_rate": "10"},
         },
 
